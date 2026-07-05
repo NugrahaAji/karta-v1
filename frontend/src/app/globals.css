@@ -1,0 +1,350 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Design Tokens ─────────────────────────────────────────────────────────── */
+:root {
+  /* Dark mode (default) */
+  --bg:            #070707;
+  --bg-2:          #0c0c0c;
+  --bg-3:          #0f0f0f;
+  --bg-4:          #111111;
+  --bg-hover:      #121212;
+
+  --border:        #303030;
+  --border-2:      #1e1e1e;
+  --border-3:      #2a2a2a;
+
+  --text-primary:  #ededed;
+  --text-secondary:#8b8b8b;
+  --text-muted:    #555555;
+  --text-faint:    #333333;
+
+  --sidebar-bg:    #050505;
+  --input-bg:      #0f0f0f;
+
+  /* ─── Accent — edit ONLY these three to retheme the entire app ─────────── */
+  --accent-from:   #007bff;
+  --accent-via:    #007bff90;
+  --accent-to:     #007bff;
+
+  /* Derived accent tokens (auto-computed, do NOT edit manually) */
+  --accent-gradient:    linear-gradient(to right, var(--accent-from), var(--accent-via), var(--accent-to));
+  --accent-color:       var(--accent-from);
+  --accent-color-2:     var(--accent-via);
+  --accent-muted:       color-mix(in srgb, var(--accent-from) 12%, transparent);
+  --accent-muted-border:color-mix(in srgb, var(--accent-from) 25%, transparent);
+}
+
+/* Light mode overrides — high contrast */
+html.light {
+  --bg:            #f4f4f5;
+  --bg-2:          #ffffff;
+  --bg-3:          #f1f1f1;
+  --bg-4:          #e8e8e8;
+  --bg-hover:      #f0f0f0;
+
+  --border:        #d1d1d1;
+  --border-2:      #e4e4e4;
+  --border-3:      #c4c4c4;
+
+  --text-primary:  #0f0f0f;
+  --text-secondary:#3a3a3a;
+  --text-muted:    #606060;
+  --text-faint:    #a0a0a0;
+
+  --sidebar-bg:    #fafafa;
+  --input-bg:      #ffffff;
+}
+
+/* ─── Base ───────────────────────────────────────────────────────────────────── */
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    background-color: var(--bg);
+    color: var(--text-primary);
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text-primary);
+  }
+
+  /* 
+   * Theme switch transition — applied as opt-in via class.
+   * Do NOT apply globally (it breaks hover effects, animations, and selects).
+   * The ThemeToggle component adds .theme-switching to <html> temporarily.
+   */
+  html.theme-switching,
+  html.theme-switching *,
+  html.theme-switching *::before,
+  html.theme-switching *::after {
+    transition: background-color 0.3s ease,
+                border-color 0.3s ease,
+                color 0.3s ease,
+                fill 0.3s ease,
+                stroke 0.3s ease !important;
+  }
+
+  /* Selection color follows accent */
+  ::selection {
+    background-color: color-mix(in srgb, var(--accent-from) 30%, transparent);
+    color: var(--text-primary);
+  }
+}
+
+/* ─── Component Classes ──────────────────────────────────────────────────────── */
+@layer components {
+
+  /* ── Primary Button — always uses accent gradient ───────────────────────── */
+  .btn-primary {
+    @apply inline-flex justify-center items-center gap-2 px-4 py-2
+           text-white rounded-md font-bold text-sm
+           hover:opacity-90 transition-all
+           disabled:opacity-50 disabled:cursor-not-allowed;
+    background: var(--accent-gradient);
+  }
+
+  /* ── Secondary Button ───────────────────────────────────────────────────── */
+  .btn-secondary {
+    @apply inline-flex justify-center items-center gap-2 px-4 py-2
+           rounded-md font-medium text-sm transition-all
+           disabled:opacity-50 disabled:cursor-not-allowed;
+    border: 1px solid var(--border);
+    background-color: var(--bg-2);
+    color: var(--text-primary);
+  }
+  .btn-secondary:hover {
+    background-color: var(--bg-3);
+    border-color: var(--border-3);
+  }
+
+  /* ── Input — focus ring uses accent color ───────────────────────────────── */
+  .input {
+    @apply w-full px-3 py-2 rounded-md text-sm transition-all focus:outline-none;
+    border: 1px solid var(--border);
+    background-color: var(--input-bg);
+    color: var(--text-primary);
+  }
+  .input:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 1px var(--accent-color);
+  }
+  .input::placeholder {
+    color: var(--text-muted);
+  }
+
+  /* ── Card ───────────────────────────────────────────────────────────────── */
+  .card {
+    @apply rounded-xl overflow-hidden;
+    border: 1px solid var(--border);
+    background-color: var(--bg-2);
+  }
+
+  /* ── Page shell ─────────────────────────────────────────────────────────── */
+  .page-bg {
+    background-color: var(--bg);
+    color: var(--text-primary);
+    min-height: 100vh;
+  }
+
+  /* ── Sidebar ────────────────────────────────────────────────────────────── */
+  .sidebar {
+    background-color: var(--sidebar-bg);
+    border-right: 1px solid var(--border);
+  }
+
+  /* ── Nav item ───────────────────────────────────────────────────────────── */
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all;
+    border: 1px solid transparent;
+    color: var(--text-secondary);
+  }
+  .nav-item:hover {
+    background-color: var(--bg-3);
+    border-color: var(--border-2);
+    color: var(--text-primary);
+  }
+  .nav-item.active {
+    background-color: var(--bg-4);
+    border-color: var(--border);
+    color: var(--accent-color);
+  }
+
+  /* ── Divider ────────────────────────────────────────────────────────────── */
+  .divider {
+    border-color: var(--border);
+  }
+
+  /* ── Text helpers ───────────────────────────────────────────────────────── */
+  .text-themed-primary   { color: var(--text-primary); }
+  .text-themed-secondary { color: var(--text-secondary); }
+  .text-themed-muted     { color: var(--text-muted); }
+
+  /* ── Badge ──────────────────────────────────────────────────────────────── */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono;
+    background-color: var(--bg-4);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+
+  /* ── Table structure ────────────────────────────────────────────────────── */
+  .table-row-hover:hover {
+    background-color: var(--bg-3);
+  }
+  .table-divider {
+    border-color: var(--border-2) !important;
+  }
+  .table-header-row {
+    border-bottom: 1px solid var(--border);
+  }
+  .table-header-cell {
+    @apply text-xs font-semibold uppercase tracking-widest px-5 py-3.5;
+    color: var(--text-muted);
+  }
+
+  /* ── Badge count ────────────────────────────────────────────────────────── */
+  .badge-count {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono;
+    background-color: var(--bg-4);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+
+  /* ── Empty state icon container ─────────────────────────────────────────── */
+  .empty-icon-wrap {
+    @apply p-4 rounded-2xl;
+    background-color: var(--bg-4);
+    border: 1px solid var(--border-2);
+  }
+
+  /* ── Info banners ───────────────────────────────────────────────────────── */
+  .info-banner {
+    @apply flex items-start gap-3 px-4 py-3 rounded-lg mb-6;
+    border: 1px solid;
+  }
+  .info-banner-accent { background-color: var(--accent-muted); border-color: var(--accent-muted-border); }
+  .info-banner-purple { background-color: rgba(168,85,247,0.05); border-color: rgba(168,85,247,0.15); }
+  .info-banner-indigo { background-color: rgba(99,102,241,0.05); border-color: rgba(99,102,241,0.15); }
+  .info-banner-teal   { background-color: rgba(20,184,166,0.05); border-color: rgba(20,184,166,0.15); }
+  .info-banner-amber  { background-color: rgba(245,158,11,0.05); border-color: rgba(245,158,11,0.15); }
+
+  /* ── Page container ─────────────────────────────────────────────────────── */
+  .page-container {
+    @apply p-8 max-w-5xl mx-auto;
+  }
+
+  /* ── Section divider ────────────────────────────────────────────────────── */
+  .section-divider {
+    border-color: var(--border);
+  }
+
+  /* ── Inline nav badges ──────────────────────────────────────────────────── */
+  .nav-badge-indigo {
+    @apply inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors px-2.5 py-1.5 rounded-md;
+    background-color: rgba(99,102,241,0.05);
+    border: 1px solid rgba(99,102,241,0.2);
+  }
+  .nav-badge-indigo:hover { background-color: rgba(99,102,241,0.1); border-color: rgba(99,102,241,0.4); }
+
+  .nav-badge-teal {
+    @apply inline-flex items-center gap-1.5 text-xs font-semibold text-teal-400 hover:text-teal-300 transition-colors px-2.5 py-1.5 rounded-md;
+    background-color: rgba(20,184,166,0.05);
+    border: 1px solid rgba(20,184,166,0.2);
+  }
+  .nav-badge-teal:hover { background-color: rgba(20,184,166,0.1); border-color: rgba(20,184,166,0.4); }
+
+  /* Accent nav badge — automatically follows --accent-color */
+  .nav-badge-accent {
+    @apply inline-flex items-center gap-1.5 text-xs font-semibold transition-colors px-2.5 py-1.5 rounded-md;
+    color: var(--accent-color);
+    background-color: var(--accent-muted);
+    border: 1px solid var(--accent-muted-border);
+  }
+  .nav-badge-accent:hover {
+    background-color: color-mix(in srgb, var(--accent-color) 18%, transparent);
+    border-color: color-mix(in srgb, var(--accent-color) 45%, transparent);
+  }
+
+  /* ── Text utilities ─────────────────────────────────────────────────────── */
+  .t-primary   { color: var(--text-primary); }
+  .t-secondary { color: var(--text-secondary); }
+  .t-muted     { color: var(--text-muted); }
+
+  /* ─── Accent utility classes ─────────────────────────────────────────────
+     Use these in ALL components instead of hardcoding Tailwind color classes.
+     To retheme, only change --accent-from / --accent-via / --accent-to above.
+  ─────────────────────────────────────────────────────────────────────────── */
+
+  /* Full gradient background (buttons, headers, avatars) */
+  .accent-gradient {
+    background: var(--accent-gradient);
+  }
+
+  /* Gradient clipped to text */
+  .text-accent-gradient {
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Solid accent color for text */
+  .text-accent {
+    color: var(--accent-color);
+  }
+
+  /* Accent border */
+  .border-accent {
+    border-color: var(--accent-color);
+  }
+
+  /* Focus ring that follows accent (add to any interactive element) */
+  .ring-accent:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 1px var(--accent-color);
+  }
+
+  /* Muted accent chip/badge background */
+  .bg-accent-muted {
+    background-color: var(--accent-muted);
+    border-color: var(--accent-muted-border);
+    color: var(--accent-color);
+  }
+
+  /* Avatar / icon with gradient (replaces from-purple-600 via-pink-500 to-orange-500) */
+  .accent-avatar {
+    background: var(--accent-gradient);
+    color: white;
+  }
+
+  /* Progress / indicator bar */
+  .accent-bar {
+    background: var(--accent-gradient);
+    border-radius: 9999px;
+  }
+
+  /* Spinner that uses accent color */
+  .accent-spinner {
+    color: var(--accent-color);
+  }
+
+  /* Inline dot indicator */
+  .accent-dot {
+    background-color: var(--accent-color);
+    border-radius: 9999px;
+  }
+
+  /* Selected state for toggle / choice buttons */
+  .accent-selected {
+    background-color: var(--accent-muted);
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+  }
+}
