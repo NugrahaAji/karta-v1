@@ -92,6 +92,6 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-});
+}).setTimeout(620_000); // 620 detik — cukup untuk AI reasoning 600 detik
 
 export default app;

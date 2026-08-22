@@ -5,7 +5,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import {
     ArrowLeft, Loader2, AlertCircle, Users, CheckCircle2,
     AlertTriangle, ChevronDown, Layers, BarChart3, Gavel,
-    Info, Send, Clock, Table2, MessageSquare
+    Info, Send, Clock, Table2, MessageSquare, Brain
 } from "lucide-react";
 import {
     RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -15,9 +15,10 @@ import {
 import api from "@/lib/api";
 import {
     AssessmentSession, Dimension, SubDimension, AssessmentResponse,
-    ResponseItem, Adjustment
+    ResponseItem, FinalScore
 } from "@/types";
 import MonitoringTable, { monRowKey } from "@/components/MonitoringTable";
+import AiReasoningPanel, { AssessmentPayloadItem } from "@/components/AiReasoningPanel";
 import Link from "next/link";
 import toast from "react-hot-toast";
 
@@ -44,7 +45,7 @@ interface SubResult {
     isTied: boolean;
     /** levelIndex that has the most votes (only meaningful when hasMajority=true) */
     majorityLevelIndex: number | null;
-    adjustment?: Adjustment;
+    finalScore?: FinalScore;
 }
 
 export default function SessionResultsPage() {
@@ -63,6 +64,7 @@ export default function SessionResultsPage() {
     const [saving, setSaving] = useState(false);
     const [view, setView] = useState<"detail" | "table">("table");
     const [selectedDimIdx, setSelectedDimIdx] = useState(0);
+    const [showAiPanel, setShowAiPanel] = useState(false);
     // Deep-link: ?tab=monitoring opens monitoring tab directly
     const [activeTab, setActiveTab] = useState<"results" | "monitoring">(
         searchParams?.get("tab") === "monitoring" ? "monitoring" : "results"
@@ -133,8 +135,8 @@ export default function SessionResultsPage() {
                 const isTied = evaluatorAnswers.length > 0 && topLevels.length > 1;
                 const majorityLevelIndex = hasMajority ? topLevels[0] : null;
 
-                const adjustment = session?.adjustments?.find(
-                    a => a.subdimension === sub._id && a.dimension === dim._id
+                const finalScore = session?.finalScores?.find(
+                    f => f.subdimension === sub._id && f.dimension === dim._id
                 );
 
                 results.push({
@@ -151,7 +153,7 @@ export default function SessionResultsPage() {
                     hasMajority,
                     isTied,
                     majorityLevelIndex,
-                    adjustment,
+                    finalScore,
                 });
             }
         }
@@ -160,9 +162,40 @@ export default function SessionResultsPage() {
 
     const totalSubs = subResults.length;
     const majorityCount  = subResults.filter(s => s.hasMajority).length;
-    const tiedCount      = subResults.filter(s => s.isTied && !s.adjustment).length;
-    const adjustedCount  = subResults.filter(s => s.adjustment).length;
+    const tiedCount      = subResults.filter(s => s.isTied && !s.finalScore).length;
+    const adjustedCount  = subResults.filter(s => s.finalScore?.source === "adjusted").length;
     const noResponseCount = subResults.filter(s => s.evaluatorAnswers.length === 0).length;
+
+    // ─── Build AI Reasoning payload ───────────────────────────────────────────
+    const aiAssessments = useMemo<AssessmentPayloadItem[]>(() => {
+        return subResults
+            .filter(sub => sub.evaluatorAnswers.length > 0 || sub.finalScore !== undefined)
+            .map(sub => {
+                const dim = dimensions.find(d => d._id === sub.dimId);
+                const finalIdx = sub.finalScore !== undefined
+                    ? sub.finalScore.finalLevelIndex
+                    : sub.hasMajority ? sub.majorityLevelIndex : null;
+                const finalResult = finalIdx !== null ? finalIdx + 1 : 0;
+                const expectedLevel =
+                    session?.subdimensionAnalysis?.find(s => s.subdimension === sub.subId)?.expectedLevel
+                    ?? finalResult + 1;
+                const notes = responses
+                    .flatMap(resp => {
+                        const item = resp.responses.find(r => r.subdimension === sub.subId);
+                        return item?.note ? [item.note] : [];
+                    })
+                    .join(" | ");
+                return {
+                    dimension:        dim?.name ?? "Unknown",
+                    dimension_id:     sub.dimId,
+                    sub_dimension:    sub.subName,
+                    sub_dimension_id: sub.subId,
+                    final_result:     finalResult,
+                    expected_level:   expectedLevel,
+                    assessment_note:  notes || undefined,
+                };
+            });
+    }, [subResults, dimensions, session, responses]);
 
     const handleAdjust = async (subId: string, dimId: string) => {
         setSaving(true);
@@ -207,6 +240,7 @@ export default function SessionResultsPage() {
     const totalMembers = session.assignedTo?.length ?? 0;
 
     return (
+        <>
         <div className="page-container max-w-5xl">
             {/* Back */}
             <Link href="/dashboard/manage-sessions"
@@ -245,21 +279,44 @@ export default function SessionResultsPage() {
             </div>
             )}
 
-            {/* ─── Tab Bar ──────────────────────────────────────────── */}
-            <div className="flex gap-1 mb-6 p-1 rounded-xl" style={{ backgroundColor: "var(--bg-3)", width: "fit-content" }}>
-                {(["results", "monitoring"] as const).map(tab => (
+            {/* ─── Tab Bar + AI Button ───────────────────────────────── */}
+            <div className="flex items-center justify-between gap-3 mb-6">
+                <div className="flex gap-1 p-1 rounded-xl" style={{ backgroundColor: "var(--bg-3)", width: "fit-content" }}>
+                    {(["results", "monitoring"] as const).map(tab => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className="px-4 py-2 rounded-lg text-xs font-bold transition-all capitalize"
+                            style={activeTab === tab
+                                ? { backgroundColor: "var(--bg)", color: "var(--text-primary)", boxShadow: "0 1px 4px rgba(0,0,0,0.2)" }
+                                : { color: "var(--text-muted)" }
+                            }
+                        >
+                            {tab === "results" ? "Assessment Results" : "Monitoring"}
+                        </button>
+                    ))}
+                </div>
+
+                {/* AI Reasoning Button */}
+                {activeTab === "results" && aiAssessments.length > 0 && (
                     <button
-                        key={tab}
-                        onClick={() => setActiveTab(tab)}
-                        className="px-4 py-2 rounded-lg text-xs font-bold transition-all capitalize"
-                        style={activeTab === tab
-                            ? { backgroundColor: "var(--bg)", color: "var(--text-primary)", boxShadow: "0 1px 4px rgba(0,0,0,0.2)" }
-                            : { color: "var(--text-muted)" }
-                        }
+                        onClick={() => setShowAiPanel(true)}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all border"
+                        style={{
+                            background: showAiPanel
+                                ? "linear-gradient(135deg, rgba(139,92,246,0.25), rgba(168,85,247,0.15))"
+                                : "linear-gradient(135deg, rgba(139,92,246,0.12), rgba(168,85,247,0.06))",
+                            borderColor: "rgba(139,92,246,0.35)",
+                            color: "#c084fc",
+                        }}
                     >
-                        {tab === "results" ? "Assessment Results" : "Monitoring"}
+                        <Brain className="w-4 h-4" />
+                        AI Reasoning
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-black" style={{ backgroundColor: "rgba(139,92,246,0.2)", color: "#a78bfa" }}>
+                            {aiAssessments.length}
+                        </span>
                     </button>
-                ))}
+                )}
             </div>
 
             {/* ─── Monitoring Tab (read-only) ──────────────────────── */}
@@ -283,7 +340,7 @@ export default function SessionResultsPage() {
                 }
                 const finalResults: Record<string, number | null> = {};
                 for (const sub of subResults) {
-                    const fi = sub.adjustment ? sub.adjustment.finalLevelIndex : sub.hasMajority ? sub.majorityLevelIndex : null;
+                    const fi = sub.finalScore?.finalLevelIndex ?? (sub.hasMajority ? sub.majorityLevelIndex : null);
                     finalResults[sub.subId] = fi !== null ? fi + 1 : null;
                 }
                 return (
@@ -303,9 +360,7 @@ export default function SessionResultsPage() {
 
                 // Radar data: one point per subdimension
                 const radarData = subResults.map(sub => {
-                    const finalLevelIdx = sub.adjustment
-                        ? sub.adjustment.finalLevelIndex
-                        : sub.hasMajority ? sub.majorityLevelIndex : null;
+                    const finalLevelIdx = sub.finalScore?.finalLevelIndex ?? (sub.hasMajority ? sub.majorityLevelIndex : null);
                     return {
                         subject: sub.subName,
                         value: finalLevelIdx !== null ? finalLevelIdx + 1 : 0,
@@ -317,9 +372,7 @@ export default function SessionResultsPage() {
                 const barData = dimensions.map((dim, dIdx) => {
                     const dimSubs = subResults.filter(s => s.dimId === dim._id);
                     const values = dimSubs.map(sub => {
-                        const idx = sub.adjustment
-                            ? sub.adjustment.finalLevelIndex
-                            : sub.hasMajority ? sub.majorityLevelIndex : null;
+                        const idx = sub.finalScore?.finalLevelIndex ?? (sub.hasMajority ? sub.majorityLevelIndex : null);
                         return idx !== null ? idx + 1 : 0;
                     }).filter(v => v > 0);
                     const avg = values.length > 0
@@ -388,9 +441,7 @@ export default function SessionResultsPage() {
                                     if (!dim) return null;
                                     const dimSubs = subResults.filter(s => s.dimId === dim._id);
                                     const dimBarData = dimSubs.map(sub => {
-                                        const idx = sub.adjustment
-                                            ? sub.adjustment.finalLevelIndex
-                                            : sub.hasMajority ? sub.majorityLevelIndex : null;
+                                        const idx = sub.finalScore?.finalLevelIndex ?? (sub.hasMajority ? sub.majorityLevelIndex : null);
                                         return {
                                             name: sub.subName.length > 14 ? sub.subName.slice(0, 14) + "…" : sub.subName,
                                             fullName: sub.subName,
@@ -470,8 +521,9 @@ export default function SessionResultsPage() {
                                 const dimSubs = subResults.filter(s => s.dimId === dim._id);
                                 const colorClass = DIM_COLORS[dIdx % DIM_COLORS.length];
                                 return dimSubs.map((sub, sIdx) => {
-                                    const finalLevelIdx = sub.adjustment ? sub.adjustment.finalLevelIndex : sub.hasMajority ? sub.majorityLevelIndex : null;
+                                    const finalLevelIdx = sub.finalScore?.finalLevelIndex ?? (sub.hasMajority ? sub.majorityLevelIndex : null);
                                     const finalBobot = finalLevelIdx !== null ? finalLevelIdx + 1 : null;
+                                    const isAdjusted = sub.finalScore?.source === "adjusted";
                                     const notes = responses.flatMap(resp => { const item = resp.responses.find(r => r.subdimension === sub.subId); return item?.note ? [{ note: item.note }] : []; });
                                     return (
                                         <tr key={sub.subId} style={{ borderBottom: "1px solid var(--border)", backgroundColor: sIdx % 2 === 0 ? "var(--bg)" : "var(--bg-2)" }}>
@@ -488,8 +540,9 @@ export default function SessionResultsPage() {
                                                 {finalBobot !== null ? (
                                                     <div className="flex flex-col items-center gap-1">
                                                         <span className={`text-2xl font-black ${finalBobot >= 4 ? "text-green-400" : finalBobot === 3 ? "text-blue-400" : finalBobot === 2 ? "text-amber-400" : "text-red-400"}`}>{finalBobot}</span>
-                                                        {sub.adjustment && <span className="text-[9px] font-semibold text-purple-400 bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 rounded-full">Adjusted</span>}
-                                                        {sub.isTied && !sub.adjustment && <span className="text-[9px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full">Tied</span>}
+                                                        {isAdjusted && <span className="text-[9px] font-semibold text-purple-400 bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 rounded-full">Adjusted</span>}
+                                                        {sub.finalScore?.source === "majority" && <span className="text-[9px] font-semibold text-green-400 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-full">Majority</span>}
+                                                        {sub.isTied && !sub.finalScore && <span className="text-[9px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full">Tied</span>}
                                                     </div>
                                                 ) : <span className="text-xs t-muted">—</span>}
                                             </td>
@@ -549,7 +602,7 @@ export default function SessionResultsPage() {
                                 <div className="divide-y" style={{ borderTop: "1px solid var(--border-2)" }}>
                                     {dimSubs.map(sub => {
                                         const hasResponses = sub.evaluatorAnswers.length > 0;
-                                        const finalLevelIdx = sub.adjustment ? sub.adjustment.finalLevelIndex : sub.hasMajority ? sub.majorityLevelIndex : null;
+                                        const finalLevelIdx = sub.finalScore?.finalLevelIndex ?? (sub.hasMajority ? sub.majorityLevelIndex : null);
                                         const finalLevelName = finalLevelIdx !== null && sub.levels[finalLevelIdx] ? sub.levels[finalLevelIdx].name : null;
                                         const finalBobot = finalLevelIdx !== null ? finalLevelIdx + 1 : null;
                                         const isAdjusting = adjusting === sub.subId;
@@ -558,7 +611,8 @@ export default function SessionResultsPage() {
                                                 <div className="flex items-start justify-between gap-3 mb-3">
                                                     <p className="text-sm font-semibold t-primary">{sub.subName}</p>
                                                     {!hasResponses ? <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-gray-500/10 border border-gray-500/20 text-gray-400"><Clock className="w-3 h-3" /> No responses</span>
-                                                    : sub.adjustment ? <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-purple-500/10 border border-purple-500/20 text-purple-400"><Gavel className="w-3 h-3" /> Adjusted</span>
+                                                    : sub.finalScore?.source === "adjusted" ? <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-purple-500/10 border border-purple-500/20 text-purple-400"><Gavel className="w-3 h-3" /> Adjusted</span>
+                                                    : sub.finalScore?.source === "majority" ? <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-green-500/10 border border-green-500/20 text-green-400"><CheckCircle2 className="w-3 h-3" /> Majority</span>
                                                     : sub.hasMajority ? <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-green-500/10 border border-green-500/20 text-green-400"><CheckCircle2 className="w-3 h-3" /> Majority</span>
                                                     : <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-amber-500/10 border border-amber-500/20 text-amber-400"><AlertTriangle className="w-3 h-3" /> Tied</span>}
                                                 </div>
@@ -586,14 +640,14 @@ export default function SessionResultsPage() {
                                                             <p className="t-primary font-semibold leading-snug">{finalLevelName}</p>
                                                             <p className="t-muted text-[10px] mt-0.5">Bobot: <span className="font-bold text-green-400">{finalBobot}</span>
                                                                 {sub.hasMajority && sub.majorityLevelIndex !== null && <span className="ml-2">· {sub.voteCounts[sub.majorityLevelIndex]}/{sub.evaluatorAnswers.length} evaluators</span>}
-                                                                {sub.adjustment?.adjustedBy && <span className="ml-2">· Adjusted by {sub.adjustment.adjustedBy.name}</span>}
+                                                                {sub.finalScore?.adjustedBy && <span className="ml-2">· Adjusted by {sub.finalScore.adjustedBy.name}</span>}
                                                             </p>
                                                         </div>
                                                     </div>
                                                 )}
                                                 {sub.isTied && hasResponses && !isAdjusting && (
-                                                    <button onClick={() => { setAdjusting(sub.subId); setAdjustLevel(sub.adjustment?.finalLevelIndex ?? 0); }} className="mt-3 btn-secondary text-xs">
-                                                        <Gavel className="w-3.5 h-3.5" /> {sub.adjustment ? "Re-adjust" : "Adjust Level"}
+                                                    <button onClick={() => { setAdjusting(sub.subId); setAdjustLevel(sub.finalScore?.finalLevelIndex ?? 0); }} className="mt-3 btn-secondary text-xs">
+                                                        <Gavel className="w-3.5 h-3.5" /> {sub.finalScore?.source === "adjusted" ? "Re-adjust" : "Adjust Level"}
                                                     </button>
                                                 )}
                                                 {isAdjusting && (
@@ -630,5 +684,17 @@ export default function SessionResultsPage() {
             )} {/* end results tab */}
 
         </div>
+
+        {/* ─── AI Reasoning Panel (slide-in from right) ────────────── */}
+        {showAiPanel && (
+            <AiReasoningPanel
+                assessments={aiAssessments}
+                sessionId={sessionId}
+                isLocked={session.aiAnalysisLocked ?? false}
+                onClose={() => setShowAiPanel(false)}
+                onSaved={() => fetchResults()}
+            />
+        )}
+        </>
     );
 }

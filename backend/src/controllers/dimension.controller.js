@@ -43,6 +43,52 @@ export const createDimension = async (req, res) => {
   }
 };
 
+// POST /api/dimensions/bulk — Bulk create semua dimensi sekaligus (superAdmin)
+// Body: { dimensions: [ { name, detail, subdimensions: [...] }, ... ] }
+// Jika dimensi dengan nama yang sama sudah ada, di-skip (tidak error).
+export const bulkCreateDimensions = async (req, res) => {
+  try {
+    const { dimensions } = req.body;
+    if (!Array.isArray(dimensions) || dimensions.length === 0) {
+      return res.status(400).json({ error: "Field 'dimensions' harus berupa array dan tidak boleh kosong." });
+    }
+
+    const results = { inserted: [], skipped: [] };
+
+    for (const dim of dimensions) {
+      if (!dim.name?.trim()) {
+        results.skipped.push({ name: dim.name ?? "(no name)", reason: "name kosong" });
+        continue;
+      }
+      try {
+        const created = await Dimension.create({
+          name:          dim.name.trim(),
+          detail:        dim.detail?.trim() ?? "",
+          subdimensions: dim.subdimensions ?? [],
+        });
+        results.inserted.push({ name: created.name, _id: created._id });
+      } catch (err) {
+        if (err.code === 11000) {
+          results.skipped.push({ name: dim.name, reason: "sudah ada (duplicate)" });
+        } else {
+          results.skipped.push({ name: dim.name, reason: err.message });
+        }
+      }
+    }
+
+    res.status(201).json({
+      message:       `Bulk create selesai. ${results.inserted.length} inserted, ${results.skipped.length} skipped.`,
+      insertedCount: results.inserted.length,
+      skippedCount:  results.skipped.length,
+      inserted:      results.inserted,
+      skipped:       results.skipped,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
 // PUT /api/dimensions/:id — Update dimension (superAdmin)
 export const updateDimension = async (req, res) => {
   const errors = validationResult(req);

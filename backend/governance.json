@@ -1,0 +1,372 @@
+{
+  "name": "Governance",
+  "detail": "Governance dimension covering communication, quality metrics, documentation, and ownership",
+  "subdimensions": [
+    {
+      "name": "Communication",
+      "detail": "Communication of process mining results and insights",
+      "levels": [
+        {
+          "name": "Level 1 - Initial",
+          "detail": "Understand the consequence and challenge with PM Plan.",
+          "criteria": [
+            {
+              "name": "Understand PM plan challenges",
+              "detail": "Understand the consequence and challenge with PM Plan.",
+              "_id": {
+                "$oid": "10c31aa83b8824f548ce64ef"
+              }
+            }
+          ],
+          "_id": {
+            "$oid": "d1cc5eece3701f6b9205321b"
+          }
+        },
+        {
+          "name": "Level 2 - Repeatable",
+          "detail": "Involve different stakeholders to gain complete view of challenges and opportunities.",
+          "criteria": [
+            {
+              "name": "Stakeholder involvement",
+              "detail": "Involve different stakeholders to gain complete view of challenges and opportunities.",
+              "_id": {
+                "$oid": "b8e0f31b1653dea49e0d0eef"
+              }
+            }
+          ],
+          "_id": {
+            "$oid": "1d4c24f08d197f973d69c17b"
+          }
+        },
+        {
+          "name": "Level 3 - Defined",
+          "detail": "Synthesize PM Plan to Practice and Guidance.",
+          "criteria": [
+            {
+              "name": "PM plan to practice",
+              "detail": "Synthesize PM Plan to Practice and Guidance.",
+              "_id": {
+                "$oid": "9b96474b54f75d7ab5d67e8b"
+              }
+            }
+          ],
+          "_id": {
+            "$oid": "877dc8c505df3ff3620e2535"
+          }
+        },
+        {
+          "name": "Level 4 - Managed",
+          "detail": "Build organizational structures to manage the strength and scalability of PM.",
+          "criteria": [
+            {
+              "name": "Organizational structure for PM",
+              "detail": "Build organizational structures to manage the strength and scalability of PM.",
+              "_id": {
+                "$oid": "e3f055e50bc1de6698d4c5c0"
+              }
+            }
+          ],
+          "_id": {
+            "$oid": "ae71fbe68b8909123732c1d5"
+          }
+        },
+        {
+          "name": "Level 5 - Optimizing",
+          "detail": "Engage with the PM community to compare achievement.",
+          "criteria": [
+            {
+              "name": "PM community engagement",
+              "detail": "Engage with the PM community to compare achievement.",
+              "_id": {
+                "$oid": "ebbbf02b1ba612e2e3661a2a"
+              }
+            }
+          ],
+          "_id": {
+            "$oid": "cf10b7d4ac05417e2484a2a1"
+          }
+        }
+      ],
+      "_id": {
+        "$oid": "0e3a698cf2845952a0f1f357"
+      }
+    },
+    {
+      "name": "Quality Metric",
+      "detail": "Metrics for measuring process mining quality and impact",
+      "levels": [
+        {
+          "name": "Level 1 - Initial",
+          "detail": "Identify PM Implementation in the roadmap.",
+          "criteria": [
+            {
+              "name": "Identify PM in roadmap",
+              "detail": "Identify PM Implementation in the roadmap.",
+              "_id": {
+                "$oid": "785e0a1c76cf99614f4cf7a8"
+              }
+            }
+          ],
+          "_id": {
+            "$oid": "bd6a8224f8ce654ee4b885ea"
+          }
+        },
+        {
+          "name": "Level 2 - Repeatable",
+          "detail": "Translate principles into concrete responsibilities, processes, and metrics.",
+          "criteria": [
+            {
+              "name": "Concrete responsibilities & metrics",
+              "detail": "Translate principles into concrete responsibilities, processes, and metrics.",
+              "_id": {
+                "$oid": "ce5863a57d41499f21048426"
+              }
+            }
+          ],
+          "_id": {
+            "$oid": "85efd7fee0c839b307efa891"
+          }
+        },
+        {
+          "name": "Level 3 - Defined",
+          "detail": "Standardize governance practices with supporting technology.",
+          "criteria": [
+            {
+              "name": "Technology-supported governance",
+              "detail": "Standardize governance practices with supporting technology.",
+              "_id": {
+                "$oid": "c35e2028cfc2e25ef03c7765"
+              }
+            }
+          ],
+          "_id": {
+            "$oid": "3b161d603c7f3a80687f08cb"
+          }
+        },
+        {
+          "name": "Level 4 - Managed",
+          "detail": "Standardize governance practices with Corrective Action.",
+          "criteria": [
+            {
+              "name": "Corrective action governance",
+              "detail": "Standardize governance practices with Corrective Action.",
+              "_id": {
+                "$oid": "e11a7bb6a43c80ac10f08bcd"
+              }
+            }
+          ],
+          "_id": {
+            "$oid": "12438bf5e28624ef519ff80a"
+          }
+        },
+        {
+          "name": "Level 5 - Optimizing",
+          "detail": "Standardized governance practice with Preventive Plan.",
+          "criteria": [
+            {
+              "name": "Preventive plan governance",
+              "detail": "Standardized governance practice with Preventive Plan.",
+              "_id": {
+                "$oid": "68a29c0c7ab2eeddda6a5c79"
+              }
+            }
+          ],
+          "_id": {
+            "$oid": "60098b4a87a6ea2cdb1004f7"
+          }
+        }
+      ],
+      "_id": {
+        "$oid": "e10769cd485f5f9976cdfc1c"
+      }
+    },
+    {
+      "name": "Documentation System",
+      "detail": "Documentation and compliance check practices for process mining",
+      "levels": [
+        {
+          "name": "Level 1 - Initial",
+          "detail": "No Standard Operating Procedure (SOP) Established.",
+          "criteria": [
+            {
+              "name": "No SOP established",
+              "detail": "No Standard Operating Procedure (SOP) Established.",
+              "_id": {
+                "$oid": "ce18dba701630c5d950f71a6"
+              }
+            }
+          ],
+          "_id": {
+            "$oid": "ff0070fc67f7ad27f477d879"
+          }
+        },
+        {
+          "name": "Level 2 - Repeatable",
+          "detail": "SOP Established but Not Fully Implemented.",
+          "criteria": [
+            {
+              "name": "SOP established, not fully implemented",
+              "detail": "SOP Established but Not Fully Implemented.",
+              "_id": {
+                "$oid": "53c0eca61e53c4245ce7b7c4"
+              }
+            }
+          ],
+          "_id": {
+            "$oid": "74c7ae5c73533f3bd7e2002d"
+          }
+        },
+        {
+          "name": "Level 3 - Defined",
+          "detail": "SOP Implemented and Monitoring Documented.",
+          "criteria": [
+            {
+              "name": "SOP implemented & monitored",
+              "detail": "SOP Implemented and Monitoring Documented.",
+              "_id": {
+                "$oid": "f1af31446d66d8db3eae61c7"
+              }
+            }
+          ],
+          "_id": {
+            "$oid": "56974896d29b7b4c80d19595"
+          }
+        },
+        {
+          "name": "Level 4 - Managed",
+          "detail": "SOP Implemented, Monitoring Documented and KPI Recorded.",
+          "criteria": [
+            {
+              "name": "SOP with KPI recorded",
+              "detail": "SOP Implemented, Monitoring Documented and KPI Recorded.",
+              "_id": {
+                "$oid": "c22b64b855d61d1037076199"
+              }
+            }
+          ],
+          "_id": {
+            "$oid": "9aaf92388b7750acb4ddd601"
+          }
+        },
+        {
+          "name": "Level 5 - Optimizing",
+          "detail": "Use feedback from Monitoring and KPI for Continuous Improvement.",
+          "criteria": [
+            {
+              "name": "Feedback-driven continuous improvement",
+              "detail": "Use feedback from Monitoring and KPI for Continuous Improvement.",
+              "_id": {
+                "$oid": "91833cadfbb7934da45ab81b"
+              }
+            }
+          ],
+          "_id": {
+            "$oid": "d0cc3d8ccbeea3385105ecac"
+          }
+        }
+      ],
+      "_id": {
+        "$oid": "30b21ca7de9b845745e462e8"
+      }
+    },
+    {
+      "name": "Ownership",
+      "detail": "Process and data ownership for process mining",
+      "levels": [
+        {
+          "name": "Level 1 - Initial",
+          "detail": "Defining process ownership structure, including roles and responsibilities.",
+          "criteria": [
+            {
+              "name": "Define ownership structure",
+              "detail": "Defining process ownership structure, including roles and responsibilities.",
+              "_id": {
+                "$oid": "04511693a7f5f340af1cc5cc"
+              }
+            }
+          ],
+          "_id": {
+            "$oid": "40b233272b7889b0468c428f"
+          }
+        },
+        {
+          "name": "Level 2 - Repeatable",
+          "detail": "Assign process owners to each process based on expertise and knowledge.",
+          "criteria": [
+            {
+              "name": "Assign process owners",
+              "detail": "Assign process owners to each process based on expertise and knowledge.",
+              "_id": {
+                "$oid": "8e63ac4d7b860004e5809d00"
+              }
+            }
+          ],
+          "_id": {
+            "$oid": "af4b237ac60b2fa1b29ce0be"
+          }
+        },
+        {
+          "name": "Level 3 - Defined",
+          "detail": "Provide process owners with necessary resources and support.",
+          "criteria": [
+            {
+              "name": "Resourced process owners",
+              "detail": "Provide process owners with necessary resources and support.",
+              "_id": {
+                "$oid": "db468e90e2a377c035e058d2"
+              }
+            }
+          ],
+          "_id": {
+            "$oid": "7e66b963846d1ba009ffe853"
+          }
+        },
+        {
+          "name": "Level 4 - Managed",
+          "detail": "Monitor performance of process owners and provide feedback and support.",
+          "criteria": [
+            {
+              "name": "Monitor owner performance",
+              "detail": "Monitor performance of process owners and provide feedback and support.",
+              "_id": {
+                "$oid": "a12a0a39aa23dc9903546d65"
+              }
+            }
+          ],
+          "_id": {
+            "$oid": "ed1394b42c8c8da168d3d5ff"
+          }
+        },
+        {
+          "name": "Level 5 - Optimizing",
+          "detail": "Continuously improve the process ownership structure and performance.",
+          "criteria": [
+            {
+              "name": "Continuous ownership improvement",
+              "detail": "Continuously improve the process ownership structure and performance.",
+              "_id": {
+                "$oid": "49cbb6c3a5ac6dc0a4acc7bd"
+              }
+            }
+          ],
+          "_id": {
+            "$oid": "ca56f7695be8dd9aa0d24baf"
+          }
+        }
+      ],
+      "_id": {
+        "$oid": "979d4adc06d8803e986a13f7"
+      }
+    }
+  ],
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-08-22T16:11:35.132Z"
+  },
+  "updatedAt": {
+    "$date": "2026-08-22T16:11:35.132Z"
+  },
+  "_id": {
+    "$oid": "e2c23a10f4d8e55b7c6cb2c4"
+  }
+}

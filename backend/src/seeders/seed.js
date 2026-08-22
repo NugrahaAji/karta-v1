@@ -23,15 +23,15 @@ async function seed() {
     console.log("✅ Connected to MongoDB");
 
     // ── Seed SuperAdmin ─────────────────────────────────────────────────
-    const existingAdmin = await User.findOne({ email: SUPER_ADMIN.email });
-    if (existingAdmin) {
-      console.log("⚠️  SuperAdmin already exists, skipping...");
-    } else {
-      await User.create(SUPER_ADMIN);
-      console.log("✅ SuperAdmin account created");
-      console.log(`   Email: ${SUPER_ADMIN.email}`);
-      console.log(`   Password: ${SUPER_ADMIN.password}`);
-    }
+    // const existingAdmin = await User.findOne({ email: SUPER_ADMIN.email });
+    // if (existingAdmin) {
+    //   console.log("⚠️  SuperAdmin already exists, skipping...");
+    // } else {
+    //   await User.create(SUPER_ADMIN);
+    //   console.log("✅ SuperAdmin account created");
+    //   console.log(`   Email: ${SUPER_ADMIN.email}`);
+    //   console.log(`   Password: ${SUPER_ADMIN.password}`);
+    // }
 
     // ── Seed Dimensions ─────────────────────────────────────────────────
     const existingCount = await Dimension.countDocuments();

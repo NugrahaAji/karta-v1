@@ -1,0 +1,1280 @@
+{
+  "dimensions": [
+    {
+      "name": "Data",
+      "detail": "Data dimension covering availability, security, quality, explainability, and privacy of data used in process mining",
+      "subdimensions": [
+        {
+          "name": "Data Availability",
+          "detail": "Availability and acquisition of data needed for process mining",
+          "levels": [
+            {
+              "name": "Level 1 - Initial",
+              "detail": "Recognize relevant data for process mining.",
+              "criteria": [
+                {
+                  "name": "Recognize relevant data",
+                  "detail": "Recognize relevant data for process mining."
+                }
+              ]
+            },
+            {
+              "name": "Level 2 - Managed",
+              "detail": "Pay attention to data acquisition standards for process mining.",
+              "criteria": [
+                {
+                  "name": "Data acquisition standards awareness",
+                  "detail": "Pay attention to data acquisition standards for process mining."
+                }
+              ]
+            },
+            {
+              "name": "Level 3 - Defined",
+              "detail": "Propose data acquisition standards for core business units.",
+              "criteria": [
+                {
+                  "name": "Propose acquisition standards",
+                  "detail": "Propose data acquisition standards for core business units."
+                }
+              ]
+            },
+            {
+              "name": "Level 4 - Quantitatively Managed",
+              "detail": "Establish data acquisition standards across multiple departments.",
+              "criteria": [
+                {
+                  "name": "Standards across departments",
+                  "detail": "Establish data acquisition standards across multiple departments."
+                }
+              ]
+            },
+            {
+              "name": "Level 5 - Optimized",
+              "detail": "Optimize smart data acquisition across all industrial processes within departments.",
+              "criteria": [
+                {
+                  "name": "Smart data acquisition optimization",
+                  "detail": "Optimize smart data acquisition across all industrial processes within departments."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Data Security",
+          "detail": "Security management of data used in process mining",
+          "levels": [
+            {
+              "name": "Level 1 - Initial",
+              "detail": "Have data security plan for IT environment.",
+              "criteria": [
+                {
+                  "name": "Data security plan",
+                  "detail": "Have data security plan for IT environment."
+                }
+              ]
+            },
+            {
+              "name": "Level 2 - Managed",
+              "detail": "Pay general attention to data security management for IT environment.",
+              "criteria": [
+                {
+                  "name": "General security attention",
+                  "detail": "Pay general attention to data security management for IT environment."
+                }
+              ]
+            },
+            {
+              "name": "Level 3 - Defined",
+              "detail": "Make both technical and non-technical plans to deal with data security for core business.",
+              "criteria": [
+                {
+                  "name": "Technical & non-technical plans",
+                  "detail": "Make both technical and non-technical plans to deal with data security for core business."
+                }
+              ]
+            },
+            {
+              "name": "Level 4 - Quantitatively Managed",
+              "detail": "Implement data security management tools and plan across departments.",
+              "criteria": [
+                {
+                  "name": "Security tools implementation",
+                  "detail": "Implement data security management tools and plan across departments."
+                }
+              ]
+            },
+            {
+              "name": "Level 5 - Optimized",
+              "detail": "Optimize data security management and practices across targeted industrial processes.",
+              "criteria": [
+                {
+                  "name": "Security optimization across processes",
+                  "detail": "Optimize data security management and practices across targeted industrial processes."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Data Quality",
+          "detail": "Quality and structure of data used for process mining",
+          "levels": [
+            {
+              "name": "Level 1 - Initial",
+              "detail": "Identify the format of input and output for each system.",
+              "criteria": [
+                {
+                  "name": "Identify data format",
+                  "detail": "Identify the format of input and output for each system."
+                }
+              ]
+            },
+            {
+              "name": "Level 2 - Managed",
+              "detail": "One-sided and non-historical sample size, difficult to transfer and unstructured data.",
+              "criteria": [
+                {
+                  "name": "Unstructured limited data",
+                  "detail": "One-sided and non-historical sample size, difficult to transfer and unstructured data."
+                }
+              ]
+            },
+            {
+              "name": "Level 3 - Defined",
+              "detail": "Capture essential features but small sample, transferable and semi-structured formats.",
+              "criteria": [
+                {
+                  "name": "Semi-structured transferable data",
+                  "detail": "Capture essential features but small sample, transferable and semi-structured formats."
+                }
+              ]
+            },
+            {
+              "name": "Level 4 - Quantitatively Managed",
+              "detail": "Cover relevant features, large sample with equally distributed classes.",
+              "criteria": [
+                {
+                  "name": "Large balanced sample",
+                  "detail": "Cover relevant features, large sample with equally distributed classes."
+                }
+              ]
+            },
+            {
+              "name": "Level 5 - Optimized",
+              "detail": "Capture all relevant features, large sample, standardized format, structured and metric-scale.",
+              "criteria": [
+                {
+                  "name": "Standardized structured data",
+                  "detail": "Capture all relevant features, large sample, standardized format, structured and metric-scale."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Data Explainability",
+          "detail": "Explainability of data and results in process mining",
+          "levels": [
+            {
+              "name": "Level 1 - Initial",
+              "detail": "Identify the need of data explainability for business process.",
+              "criteria": [
+                {
+                  "name": "Identify explainability need",
+                  "detail": "Identify the need of data explainability for business process."
+                }
+              ]
+            },
+            {
+              "name": "Level 2 - Managed",
+              "detail": "Pay attention to dealing with data explainability problems for process mining.",
+              "criteria": [
+                {
+                  "name": "Explainability problem attention",
+                  "detail": "Pay attention to dealing with data explainability problems for process mining."
+                }
+              ]
+            },
+            {
+              "name": "Level 3 - Defined",
+              "detail": "Make plans to deal with data explainability problems for core business process.",
+              "criteria": [
+                {
+                  "name": "Explainability plans for core process",
+                  "detail": "Make plans to deal with data explainability problems for core business process."
+                }
+              ]
+            },
+            {
+              "name": "Level 4 - Quantitatively Managed",
+              "detail": "Standardize data documentation and consolidation across the organization.",
+              "criteria": [
+                {
+                  "name": "Standardized documentation & consolidation",
+                  "detail": "Standardize data documentation and consolidation across the organization."
+                }
+              ]
+            },
+            {
+              "name": "Level 5 - Optimized",
+              "detail": "Optimize data explainability across targeted industrial processes within departments.",
+              "criteria": [
+                {
+                  "name": "Optimized explainability",
+                  "detail": "Optimize data explainability across targeted industrial processes within departments."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Data Privacy",
+          "detail": "Privacy management of data used in process mining",
+          "levels": [
+            {
+              "name": "Level 1 - Initial",
+              "detail": "Identify the need of data privacy for business process.",
+              "criteria": [
+                {
+                  "name": "Identify privacy need",
+                  "detail": "Identify the need of data privacy for business process."
+                }
+              ]
+            },
+            {
+              "name": "Level 2 - Managed",
+              "detail": "Pay attention to dealing with data privacy problems for process mining.",
+              "criteria": [
+                {
+                  "name": "Privacy problem attention",
+                  "detail": "Pay attention to dealing with data privacy problems for process mining."
+                }
+              ]
+            },
+            {
+              "name": "Level 3 - Defined",
+              "detail": "Make plans to deal with data privacy problems for core business process.",
+              "criteria": [
+                {
+                  "name": "Privacy plans for core process",
+                  "detail": "Make plans to deal with data privacy problems for core business process."
+                }
+              ]
+            },
+            {
+              "name": "Level 4 - Quantitatively Managed",
+              "detail": "Standardize data privacy and consolidation across the organization.",
+              "criteria": [
+                {
+                  "name": "Standardized privacy consolidation",
+                  "detail": "Standardize data privacy and consolidation across the organization."
+                }
+              ]
+            },
+            {
+              "name": "Level 5 - Optimized",
+              "detail": "Optimize data privacy across targeted industrial processes within departments.",
+              "criteria": [
+                {
+                  "name": "Optimized privacy",
+                  "detail": "Optimize data privacy across targeted industrial processes within departments."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Pipeline",
+      "detail": "Pipeline dimension covering tooling and integration with data sources and operational applications",
+      "subdimensions": [
+        {
+          "name": "Tooling",
+          "detail": "Process mining tooling capability and usage",
+          "levels": [
+            {
+              "name": "Level 1 - Initial",
+              "detail": "Use tools with limited capabilities of process mining function.",
+              "criteria": [
+                {
+                  "name": "Limited PM tools",
+                  "detail": "Use tools with limited capabilities of process mining function."
+                }
+              ]
+            },
+            {
+              "name": "Level 2 - Managed",
+              "detail": "Use tools for advanced capabilities, define specific business use case.",
+              "criteria": [
+                {
+                  "name": "Advanced tools for use case",
+                  "detail": "Use tools for advanced capabilities, define specific business use case."
+                }
+              ]
+            },
+            {
+              "name": "Level 3 - Defined",
+              "detail": "Use tools connected with ongoing process, generate dashboard for visualization.",
+              "criteria": [
+                {
+                  "name": "Connected tools with dashboard",
+                  "detail": "Use tools connected with ongoing process, generate dashboard for visualization."
+                }
+              ]
+            },
+            {
+              "name": "Level 4 - Quantitatively Managed",
+              "detail": "Use tools to get data from ongoing system, visualize, and give prediction or alert.",
+              "criteria": [
+                {
+                  "name": "Predictive tool alerts",
+                  "detail": "Use tools to get data from ongoing system, visualize, and give prediction or alert."
+                }
+              ]
+            },
+            {
+              "name": "Level 5 - Optimized",
+              "detail": "Develop integrated platform with ongoing system, make prediction and prescriptive alerts.",
+              "criteria": [
+                {
+                  "name": "Integrated prescriptive platform",
+                  "detail": "Develop integrated platform with ongoing system, make prediction and prescriptive alerts."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Integration with Data Source",
+          "detail": "Integration maturity between process mining and data sources",
+          "levels": [
+            {
+              "name": "Level 1 - Initial",
+              "detail": "Data sources need to be downloaded and adjusted to process mining needs.",
+              "criteria": [
+                {
+                  "name": "Manual data download",
+                  "detail": "Data sources need to be downloaded and adjusted to process mining needs."
+                }
+              ]
+            },
+            {
+              "name": "Level 2 - Managed",
+              "detail": "Data sources standardized to fulfill process mining needs, initial plan for automated integration.",
+              "criteria": [
+                {
+                  "name": "Standardized data sources",
+                  "detail": "Data sources standardized to fulfill process mining needs, initial plan for automated integration."
+                }
+              ]
+            },
+            {
+              "name": "Level 3 - Defined",
+              "detail": "Get integration with data source and create ongoing dashboard.",
+              "criteria": [
+                {
+                  "name": "Ongoing dashboard integration",
+                  "detail": "Get integration with data source and create ongoing dashboard."
+                }
+              ]
+            },
+            {
+              "name": "Level 4 - Quantitatively Managed",
+              "detail": "Ongoing dashboard shows prediction and makes recommendations.",
+              "criteria": [
+                {
+                  "name": "Predictive dashboard recommendations",
+                  "detail": "Ongoing dashboard shows prediction and makes recommendations."
+                }
+              ]
+            },
+            {
+              "name": "Level 5 - Optimized",
+              "detail": "Get most up-to-date data for latest predictive or prescriptive techniques.",
+              "criteria": [
+                {
+                  "name": "Up-to-date predictive data",
+                  "detail": "Get most up-to-date data for latest predictive or prescriptive techniques."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Integration with Operational Application",
+          "detail": "Integration maturity between process mining and operational applications",
+          "levels": [
+            {
+              "name": "Level 1 - Initial",
+              "detail": "Independent PM process, not connected with operational application.",
+              "criteria": [
+                {
+                  "name": "Independent PM process",
+                  "detail": "Independent PM process, not connected with operational application."
+                }
+              ]
+            },
+            {
+              "name": "Level 2 - Managed",
+              "detail": "Define which operational application can relate to process mining plan.",
+              "criteria": [
+                {
+                  "name": "Define related applications",
+                  "detail": "Define which operational application can relate to process mining plan."
+                }
+              ]
+            },
+            {
+              "name": "Level 3 - Defined",
+              "detail": "Use PM experiments to build support for breaking down data silos.",
+              "criteria": [
+                {
+                  "name": "Break down data silos",
+                  "detail": "Use PM experiments to build support for breaking down data silos."
+                }
+              ]
+            },
+            {
+              "name": "Level 4 - Quantitatively Managed",
+              "detail": "Ongoing dashboards connect with operational application and make suggestions.",
+              "criteria": [
+                {
+                  "name": "Dashboard-application suggestions",
+                  "detail": "Ongoing dashboards connect with operational application and make suggestions."
+                }
+              ]
+            },
+            {
+              "name": "Level 5 - Optimized",
+              "detail": "PM function connects all needed operational applications throughout the organization.",
+              "criteria": [
+                {
+                  "name": "Full application integration",
+                  "detail": "PM function connects all needed operational applications throughout the organization."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Technology",
+      "detail": "Technology dimension covering information capability from descriptive to prescriptive process mining",
+      "subdimensions": [
+        {
+          "name": "Information Capability",
+          "detail": "Analytical capability of process mining technology, from PM-initiated to prescriptive",
+          "levels": [
+            {
+              "name": "PM Initiated",
+              "detail": "Get process map visualizations, discovery, and conformance checking, deliver simple insights.",
+              "criteria": [
+                {
+                  "name": "Process map visualization",
+                  "detail": "Get process map visualizations, discovery, and conformance checking, deliver simple insights."
+                }
+              ]
+            },
+            {
+              "name": "Diagnostic & descriptive",
+              "detail": "Simple analytic with diagnostic and descriptive capability, root cause analysis might be helpful to understand the reason and suggest for some core business process.",
+              "criteria": [
+                {
+                  "name": "Diagnostic & descriptive analytics",
+                  "detail": "Simple analytic with diagnostic and descriptive capability, root cause analysis might be helpful to understand the reason and suggest for some core business process."
+                },
+                {
+                  "name": "Process map visualization",
+                  "detail": "The analysis result is may linked to value stream Service Level Agreement (SLA's)/ Key Performance Indicator (KPI)'s using dashboard. Sometime AI effort might be detected."
+                }
+              ]
+            },
+            {
+              "name": "Predictive",
+              "detail": "Process mining result have predictive capability using AI, using it for alerts and forecasting. The dashboard gives some value with SLA/KPI's that align with business strategy. It also supports daily process management across different department.",
+              "criteria": [
+                {
+                  "name": "Predictive analytics",
+                  "detail": "Process mining result have predictive capability using AI, using it for alerts and forecasting."
+                },
+                {
+                  "name": "AI capability",
+                  "detail": "The dashboard gives some value with SLA/KPI's that align with business strategy. It also supports daily process management across different department."
+                }
+              ]
+            },
+            {
+              "name": "Prescriptive",
+              "detail": "The recommendation give informastion about what, when, and why an event or trend might happen and tells what actions have the highest potential for best outcome. It allows learning process from historical, prediction and implementation result to trigger situationally aware or giving valuable actions needed for the ongoing system.",
+              "criteria": [
+                {
+                  "name": "AI-driven predictive alerts",
+                  "detail": "The recommendation give informastion about what, when, and why an event or trend might happen and tells what actions have the highest potential for best outcome."
+                },
+                {
+                  "name": "It allows learning process from historical, prediction and implementation result",
+                  "detail": "to trigger situationally aware or giving valuable actions needed for the ongoing system. "
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Strategic Alignment",
+      "detail": "Strategic Alignment dimension covering strategy, budgeting, and business contribution of process mining",
+      "subdimensions": [
+        {
+          "name": "Strategy",
+          "detail": "Alignment of process mining strategy with organizational goals",
+          "levels": [
+            {
+              "name": "Level 1 - Initial",
+              "detail": "Align business and technical leaders on the need for Process Mining Awareness.",
+              "criteria": [
+                {
+                  "name": "Leadership PM awareness",
+                  "detail": "Align business and technical leaders on the need for Process Mining Awareness."
+                }
+              ]
+            },
+            {
+              "name": "Level 2 - Managed",
+              "detail": "Use PM Proofs of Concept (POCs) to align leadership on PM investment.",
+              "criteria": [
+                {
+                  "name": "PM POCs for alignment",
+                  "detail": "Use PM Proofs of Concept (POCs) to align leadership on PM investment."
+                }
+              ]
+            },
+            {
+              "name": "Level 3 - Defined",
+              "detail": "Define PM strategy and communicate to organization, gain budget and sponsorship.",
+              "criteria": [
+                {
+                  "name": "Defined PM strategy & sponsorship",
+                  "detail": "Define PM strategy and communicate to organization, gain budget and sponsorship."
+                }
+              ]
+            },
+            {
+              "name": "Level 4 - Quantitatively Managed",
+              "detail": "Align PM strategy with organizational roadmaps.",
+              "criteria": [
+                {
+                  "name": "Roadmap alignment",
+                  "detail": "Align PM strategy with organizational roadmaps."
+                }
+              ]
+            },
+            {
+              "name": "Level 5 - Optimized",
+              "detail": "Sustain momentum to keep innovating and transforming.",
+              "criteria": [
+                {
+                  "name": "Sustained innovation momentum",
+                  "detail": "Sustain momentum to keep innovating and transforming."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Budgeting",
+          "detail": "Budget planning and allocation for process mining initiatives",
+          "levels": [
+            {
+              "name": "Level 1 - Initial",
+              "detail": "No PM Strategy, No PM Budgets.",
+              "criteria": [
+                {
+                  "name": "No strategy or budget",
+                  "detail": "No PM Strategy, No PM Budgets."
+                }
+              ]
+            },
+            {
+              "name": "Level 2 - Managed",
+              "detail": "Short Term Strategy, but no dedicated PM budgets yet.",
+              "criteria": [
+                {
+                  "name": "Short-term strategy, no budget",
+                  "detail": "Short Term Strategy, but no dedicated PM budgets yet."
+                }
+              ]
+            },
+            {
+              "name": "Level 3 - Defined",
+              "detail": "Short Term Strategy, Dedicated PM Budgets.",
+              "criteria": [
+                {
+                  "name": "Short-term strategy with budget",
+                  "detail": "Short Term Strategy, Dedicated PM Budgets."
+                }
+              ]
+            },
+            {
+              "name": "Level 4 - Quantitatively Managed",
+              "detail": "Medium Term PM Strategy and Dedicated PM Budgets.",
+              "criteria": [
+                {
+                  "name": "Medium-term strategy & budget",
+                  "detail": "Medium Term PM Strategy and Dedicated PM Budgets."
+                }
+              ]
+            },
+            {
+              "name": "Level 5 - Optimized",
+              "detail": "Long Term PM Strategy, Dedicated PM Budgets.",
+              "criteria": [
+                {
+                  "name": "Long-term strategy & budget",
+                  "detail": "Long Term PM Strategy, Dedicated PM Budgets."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Business Contribution",
+          "detail": "Measurement of process mining's contribution to the business",
+          "levels": [
+            {
+              "name": "Level 1 - Initial",
+              "detail": "No Measure for PM benefit to Business Contribution.",
+              "criteria": [
+                {
+                  "name": "No benefit measurement",
+                  "detail": "No Measure for PM benefit to Business Contribution."
+                }
+              ]
+            },
+            {
+              "name": "Level 2 - Managed",
+              "detail": "There will be measurement PM benefit in Business Contribution.",
+              "criteria": [
+                {
+                  "name": "Planned benefit measurement",
+                  "detail": "There will be measurement PM benefit in Business Contribution."
+                }
+              ]
+            },
+            {
+              "name": "Level 3 - Defined",
+              "detail": "Define the number PM benefit for business Contribution.",
+              "criteria": [
+                {
+                  "name": "Defined benefit numbers",
+                  "detail": "Define the number PM benefit for business Contribution."
+                }
+              ]
+            },
+            {
+              "name": "Level 4 - Quantitatively Managed",
+              "detail": "Give monitoring status for PM benefit for business contribution.",
+              "criteria": [
+                {
+                  "name": "Monitored contribution status",
+                  "detail": "Give monitoring status for PM benefit for business contribution."
+                }
+              ]
+            },
+            {
+              "name": "Level 5 - Optimized",
+              "detail": "Use business contribution for PM benefit in the Quality Management System as KPI.",
+              "criteria": [
+                {
+                  "name": "KPI-based contribution in QMS",
+                  "detail": "Use business contribution for PM benefit in the Quality Management System as KPI."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Culture",
+      "detail": "Culture dimension covering use case availability, management involvement, adaptability, and consistency",
+      "subdimensions": [
+        {
+          "name": "Use Case Availability",
+          "detail": "Availability and maturity of process mining use cases",
+          "levels": [
+            {
+              "name": "Level 1 - Initial",
+              "detail": "See Business Case Urgency but not managed.",
+              "criteria": [
+                {
+                  "name": "Unmanaged business urgency",
+                  "detail": "See Business Case Urgency but not managed."
+                }
+              ]
+            },
+            {
+              "name": "Level 2 - Managed",
+              "detail": "See Business Case Urgency, make pilot project use case.",
+              "criteria": [
+                {
+                  "name": "Pilot project use case",
+                  "detail": "See Business Case Urgency, make pilot project use case."
+                }
+              ]
+            },
+            {
+              "name": "Level 3 - Defined",
+              "detail": "Connect with department to develop solution, use case in specific business case.",
+              "criteria": [
+                {
+                  "name": "Department-specific solution use case",
+                  "detail": "Connect with department to develop solution, use case in specific business case."
+                }
+              ]
+            },
+            {
+              "name": "Level 4 - Quantitatively Managed",
+              "detail": "Make Standardized Procedure and Integrated in the System.",
+              "criteria": [
+                {
+                  "name": "Standardized integrated procedure",
+                  "detail": "Make Standardized Procedure and Integrated in the System."
+                }
+              ]
+            },
+            {
+              "name": "Level 5 - Optimized",
+              "detail": "Create Quality Management Cycle for All Process, Plan-Do-Check-Action (PDCA).",
+              "criteria": [
+                {
+                  "name": "PDCA quality cycle",
+                  "detail": "Create Quality Management Cycle for All Process, Plan-Do-Check-Action (PDCA)."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Management Involvement",
+          "detail": "Level of management involvement and sponsorship in process mining",
+          "levels": [
+            {
+              "name": "Level 1 - Initial",
+              "detail": "Rely on individual for change and problems.",
+              "criteria": [
+                {
+                  "name": "Individual-reliant change",
+                  "detail": "Rely on individual for change and problems."
+                }
+              ]
+            },
+            {
+              "name": "Level 2 - Managed",
+              "detail": "Have initiatives per department but lack of synergy.",
+              "criteria": [
+                {
+                  "name": "Siloed department initiatives",
+                  "detail": "Have initiatives per department but lack of synergy."
+                }
+              ]
+            },
+            {
+              "name": "Level 3 - Defined",
+              "detail": "Have synergy and communication with another department.",
+              "criteria": [
+                {
+                  "name": "Cross-department synergy",
+                  "detail": "Have synergy and communication with another department."
+                }
+              ]
+            },
+            {
+              "name": "Level 4 - Quantitatively Managed",
+              "detail": "Have business and IT align for integration.",
+              "criteria": [
+                {
+                  "name": "Business-IT alignment",
+                  "detail": "Have business and IT align for integration."
+                }
+              ]
+            },
+            {
+              "name": "Level 5 - Optimized",
+              "detail": "Executive level sponsorship and integration in corporate strategy.",
+              "criteria": [
+                {
+                  "name": "Executive sponsorship",
+                  "detail": "Executive level sponsorship and integration in corporate strategy."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Adaptability",
+          "detail": "Adaptability of process mining practice to customer needs",
+          "levels": [
+            {
+              "name": "Level 1 - Initial",
+              "detail": "React on customer problem based on the case.",
+              "criteria": [
+                {
+                  "name": "Reactive customer response",
+                  "detail": "React on customer problem based on the case."
+                }
+              ]
+            },
+            {
+              "name": "Level 2 - Managed",
+              "detail": "Start to have customer focus plan, accept customer sound.",
+              "criteria": [
+                {
+                  "name": "Customer focus plan",
+                  "detail": "Start to have customer focus plan, accept customer sound."
+                }
+              ]
+            },
+            {
+              "name": "Level 3 - Defined",
+              "detail": "Define the standard, procedure based on customer need.",
+              "criteria": [
+                {
+                  "name": "Customer-need standard procedure",
+                  "detail": "Define the standard, procedure based on customer need."
+                }
+              ]
+            },
+            {
+              "name": "Level 4 - Quantitatively Managed",
+              "detail": "Have measurement for customer need and satisfaction to the business process.",
+              "criteria": [
+                {
+                  "name": "Customer satisfaction measurement",
+                  "detail": "Have measurement for customer need and satisfaction to the business process."
+                }
+              ]
+            },
+            {
+              "name": "Level 5 - Optimized",
+              "detail": "Customer focus strategy, customer insight data as input and optimize it.",
+              "criteria": [
+                {
+                  "name": "Optimized customer insight strategy",
+                  "detail": "Customer focus strategy, customer insight data as input and optimize it."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Consistency",
+          "detail": "Consistency of process and change management practices",
+          "levels": [
+            {
+              "name": "Level 1 - Initial",
+              "detail": "No consistency among the process business management.",
+              "criteria": [
+                {
+                  "name": "No process consistency",
+                  "detail": "No consistency among the process business management."
+                }
+              ]
+            },
+            {
+              "name": "Level 2 - Managed",
+              "detail": "Recognize the business process and change management.",
+              "criteria": [
+                {
+                  "name": "Recognized change management",
+                  "detail": "Recognize the business process and change management."
+                }
+              ]
+            },
+            {
+              "name": "Level 3 - Defined",
+              "detail": "Define the procedure for change management.",
+              "criteria": [
+                {
+                  "name": "Defined change procedure",
+                  "detail": "Define the procedure for change management."
+                }
+              ]
+            },
+            {
+              "name": "Level 4 - Quantitatively Managed",
+              "detail": "Have mechanism to measure and review the change management.",
+              "criteria": [
+                {
+                  "name": "Change measurement mechanism",
+                  "detail": "Have mechanism to measure and review the change management."
+                }
+              ]
+            },
+            {
+              "name": "Level 5 - Optimized",
+              "detail": "Optimized step to do continuous improvement in agreement for change management.",
+              "criteria": [
+                {
+                  "name": "Continuous improvement agreement",
+                  "detail": "Optimized step to do continuous improvement in agreement for change management."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "People",
+      "detail": "People dimension covering skill and responsibility for process mining initiatives",
+      "subdimensions": [
+        {
+          "name": "Skill",
+          "detail": "Skill level of people performing process mining",
+          "levels": [
+            {
+              "name": "Level 1 - Initial",
+              "detail": "Basic understanding of Process Mining workflow, trial on new knowledge.",
+              "criteria": [
+                {
+                  "name": "Basic PM understanding",
+                  "detail": "Basic understanding of Process Mining workflow, trial on new knowledge."
+                }
+              ]
+            },
+            {
+              "name": "Level 2 - Managed",
+              "detail": "Ability to perform Process Mining Workflow Available.",
+              "criteria": [
+                {
+                  "name": "PM workflow capability",
+                  "detail": "Ability to perform Process Mining Workflow Available."
+                }
+              ]
+            },
+            {
+              "name": "Level 3 - Defined",
+              "detail": "Ability to perform data analysis and decision making, understand AI.",
+              "criteria": [
+                {
+                  "name": "Data analysis & AI understanding",
+                  "detail": "Ability to perform data analysis and decision making, understand AI."
+                }
+              ]
+            },
+            {
+              "name": "Level 4 - Quantitatively Managed",
+              "detail": "Ability to perform complex analysis in Process Mining, may use AI in practice.",
+              "criteria": [
+                {
+                  "name": "Complex PM analysis with AI",
+                  "detail": "Ability to perform complex analysis in Process Mining, may use AI in practice."
+                }
+              ]
+            },
+            {
+              "name": "Level 5 - Optimized",
+              "detail": "Trained in Process Mining integrate with AI and empower other people.",
+              "criteria": [
+                {
+                  "name": "AI-integrated PM training",
+                  "detail": "Trained in Process Mining integrate with AI and empower other people."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Responsibility",
+          "detail": "Roles, responsibilities and structure supporting process mining",
+          "levels": [
+            {
+              "name": "Level 1 - Initial",
+              "detail": "Define key roles needed to support process mining initiatives.",
+              "criteria": [
+                {
+                  "name": "Define key roles",
+                  "detail": "Define key roles needed to support process mining initiatives."
+                }
+              ]
+            },
+            {
+              "name": "Level 2 - Managed",
+              "detail": "Define specific responsibilities for each role, form Ad Hoc team.",
+              "criteria": [
+                {
+                  "name": "Ad hoc team responsibilities",
+                  "detail": "Define specific responsibilities for each role, form Ad Hoc team."
+                }
+              ]
+            },
+            {
+              "name": "Level 3 - Defined",
+              "detail": "Create organizational structure that supports process mining initiatives.",
+              "criteria": [
+                {
+                  "name": "Supportive org structure",
+                  "detail": "Create organizational structure that supports process mining initiatives."
+                }
+              ]
+            },
+            {
+              "name": "Level 4 - Quantitatively Managed",
+              "detail": "Define performance metrics for process mining initiatives.",
+              "criteria": [
+                {
+                  "name": "Performance metrics defined",
+                  "detail": "Define performance metrics for process mining initiatives."
+                }
+              ]
+            },
+            {
+              "name": "Level 5 - Optimized",
+              "detail": "Evaluate effectiveness of structure, assess roles, and identify improvement opportunities.",
+              "criteria": [
+                {
+                  "name": "Structure effectiveness evaluation",
+                  "detail": "Evaluate effectiveness of structure, assess roles, and identify improvement opportunities."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Governance",
+      "detail": "Governance dimension covering communication, quality metrics, documentation, and ownership",
+      "subdimensions": [
+        {
+          "name": "Communication",
+          "detail": "Communication of process mining results and insights",
+          "levels": [
+            {
+              "name": "Level 1 - Initial",
+              "detail": "Understand the consequence and challenge with PM Plan.",
+              "criteria": [
+                {
+                  "name": "Understand PM plan challenges",
+                  "detail": "Understand the consequence and challenge with PM Plan."
+                }
+              ]
+            },
+            {
+              "name": "Level 2 - Repeatable",
+              "detail": "Involve different stakeholders to gain complete view of challenges and opportunities.",
+              "criteria": [
+                {
+                  "name": "Stakeholder involvement",
+                  "detail": "Involve different stakeholders to gain complete view of challenges and opportunities."
+                }
+              ]
+            },
+            {
+              "name": "Level 3 - Defined",
+              "detail": "Synthesize PM Plan to Practice and Guidance.",
+              "criteria": [
+                {
+                  "name": "PM plan to practice",
+                  "detail": "Synthesize PM Plan to Practice and Guidance."
+                }
+              ]
+            },
+            {
+              "name": "Level 4 - Managed",
+              "detail": "Build organizational structures to manage the strength and scalability of PM.",
+              "criteria": [
+                {
+                  "name": "Organizational structure for PM",
+                  "detail": "Build organizational structures to manage the strength and scalability of PM."
+                }
+              ]
+            },
+            {
+              "name": "Level 5 - Optimizing",
+              "detail": "Engage with the PM community to compare achievement.",
+              "criteria": [
+                {
+                  "name": "PM community engagement",
+                  "detail": "Engage with the PM community to compare achievement."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Quality Metric",
+          "detail": "Metrics for measuring process mining quality and impact",
+          "levels": [
+            {
+              "name": "Level 1 - Initial",
+              "detail": "Identify PM Implementation in the roadmap.",
+              "criteria": [
+                {
+                  "name": "Identify PM in roadmap",
+                  "detail": "Identify PM Implementation in the roadmap."
+                }
+              ]
+            },
+            {
+              "name": "Level 2 - Repeatable",
+              "detail": "Translate principles into concrete responsibilities, processes, and metrics.",
+              "criteria": [
+                {
+                  "name": "Concrete responsibilities & metrics",
+                  "detail": "Translate principles into concrete responsibilities, processes, and metrics."
+                }
+              ]
+            },
+            {
+              "name": "Level 3 - Defined",
+              "detail": "Standardize governance practices with supporting technology.",
+              "criteria": [
+                {
+                  "name": "Technology-supported governance",
+                  "detail": "Standardize governance practices with supporting technology."
+                }
+              ]
+            },
+            {
+              "name": "Level 4 - Managed",
+              "detail": "Standardize governance practices with Corrective Action.",
+              "criteria": [
+                {
+                  "name": "Corrective action governance",
+                  "detail": "Standardize governance practices with Corrective Action."
+                }
+              ]
+            },
+            {
+              "name": "Level 5 - Optimizing",
+              "detail": "Standardized governance practice with Preventive Plan.",
+              "criteria": [
+                {
+                  "name": "Preventive plan governance",
+                  "detail": "Standardized governance practice with Preventive Plan."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Documentation System",
+          "detail": "Documentation and compliance check practices for process mining",
+          "levels": [
+            {
+              "name": "Level 1 - Initial",
+              "detail": "No Standard Operating Procedure (SOP) Established.",
+              "criteria": [
+                {
+                  "name": "No SOP established",
+                  "detail": "No Standard Operating Procedure (SOP) Established."
+                }
+              ]
+            },
+            {
+              "name": "Level 2 - Repeatable",
+              "detail": "SOP Established but Not Fully Implemented.",
+              "criteria": [
+                {
+                  "name": "SOP established, not fully implemented",
+                  "detail": "SOP Established but Not Fully Implemented."
+                }
+              ]
+            },
+            {
+              "name": "Level 3 - Defined",
+              "detail": "SOP Implemented and Monitoring Documented.",
+              "criteria": [
+                {
+                  "name": "SOP implemented & monitored",
+                  "detail": "SOP Implemented and Monitoring Documented."
+                }
+              ]
+            },
+            {
+              "name": "Level 4 - Managed",
+              "detail": "SOP Implemented, Monitoring Documented and KPI Recorded.",
+              "criteria": [
+                {
+                  "name": "SOP with KPI recorded",
+                  "detail": "SOP Implemented, Monitoring Documented and KPI Recorded."
+                }
+              ]
+            },
+            {
+              "name": "Level 5 - Optimizing",
+              "detail": "Use feedback from Monitoring and KPI for Continuous Improvement.",
+              "criteria": [
+                {
+                  "name": "Feedback-driven continuous improvement",
+                  "detail": "Use feedback from Monitoring and KPI for Continuous Improvement."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Ownership",
+          "detail": "Process and data ownership for process mining",
+          "levels": [
+            {
+              "name": "Level 1 - Initial",
+              "detail": "Defining process ownership structure, including roles and responsibilities.",
+              "criteria": [
+                {
+                  "name": "Define ownership structure",
+                  "detail": "Defining process ownership structure, including roles and responsibilities."
+                }
+              ]
+            },
+            {
+              "name": "Level 2 - Repeatable",
+              "detail": "Assign process owners to each process based on expertise and knowledge.",
+              "criteria": [
+                {
+                  "name": "Assign process owners",
+                  "detail": "Assign process owners to each process based on expertise and knowledge."
+                }
+              ]
+            },
+            {
+              "name": "Level 3 - Defined",
+              "detail": "Provide process owners with necessary resources and support.",
+              "criteria": [
+                {
+                  "name": "Resourced process owners",
+                  "detail": "Provide process owners with necessary resources and support."
+                }
+              ]
+            },
+            {
+              "name": "Level 4 - Managed",
+              "detail": "Monitor performance of process owners and provide feedback and support.",
+              "criteria": [
+                {
+                  "name": "Monitor owner performance",
+                  "detail": "Monitor performance of process owners and provide feedback and support."
+                }
+              ]
+            },
+            {
+              "name": "Level 5 - Optimizing",
+              "detail": "Continuously improve the process ownership structure and performance.",
+              "criteria": [
+                {
+                  "name": "Continuous ownership improvement",
+                  "detail": "Continuously improve the process ownership structure and performance."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

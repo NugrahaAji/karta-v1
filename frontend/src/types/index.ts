@@ -112,6 +112,18 @@ export interface CompanyMember {
 // ─── Assessment Session Types ─────────────────────────────────────────────────
 export type SessionStatus = "draft" | "scheduled" | "active" | "completed" | "cancelled";
 
+/** Entry final score per subdimensi — dari majority vote atau manual adjusted */
+export interface FinalScore {
+  _id?: string;
+  dimension: string;
+  subdimension: string;
+  finalLevelIndex: number;
+  source: "majority" | "adjusted";
+  adjustedBy?: { _id: string; name: string; email: string };
+  adjustedAt?: string;
+}
+
+/** @deprecated Gunakan FinalScore — field ini digantikan oleh finalScores */
 export interface Adjustment {
   dimension: string;
   subdimension: string;
@@ -177,13 +189,18 @@ export interface AssessmentSession {
   status: SessionStatus;
   startDate?: string;
   endDate?: string;
-  adjustments?: Adjustment[];
+  finalScores?: FinalScore[];     // semua sub yg sudah punya nilai final (majority + adjusted)
+  adjustments?: Adjustment[];     // @deprecated — lama, digantikan finalScores
   dimensionAnalysis?: DimensionAnalysis[];
   actionPlanGroups?: ActionPlanGroup[];
   subdimensionAnalysis?: SubdimensionAnalysis[];
   monitoringColumns?: MonitoringColumn[];
   monitoringData?: MonitoringCell[];
   monitoringRows?: MonitoringRow[];
+  // ─── AI Reasoning Result (permanent, one-time) ────────────────────────────
+  aiAnalysis?:       unknown;   // flat array per sub-dimensi dari Reasoning Engine
+  aiGeneratedAt?:    string;    // ISO timestamp kapan generate dilakukan
+  aiAnalysisLocked?: boolean;   // true = tombol Generate disembunyikan permanen
   createdAt: string;
   updatedAt: string;
 }
@@ -204,4 +221,16 @@ export interface AssessmentResponse {
   user: { _id: string; name: string; email: string; role: string };
   responses: ResponseItem[];
   submittedAt: string;
+}
+
+// ─── AI Reasoning Types ──────────────────────────────────────────────
+/** Satu item assessment yang dikirim ke Reasoning Engine */
+export interface AiAssessmentItem {
+  dimension: string;
+  dimension_id: string;
+  sub_dimension: string;
+  sub_dimension_id: string;
+  final_result: number;      // level aktual 1–5 (0 = belum ada)
+  expected_level?: number;   // target level 1–5 (required oleh VPS, default dihitung otomatis)
+  assessment_note?: string;  // catatan dari evaluator
 }

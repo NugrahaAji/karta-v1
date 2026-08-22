@@ -6,6 +6,7 @@ import {
     ArrowLeft, Loader2, AlertCircle, Users,
     Building2, Save, Plus, Trash2, Settings2, Activity,
     ClipboardList, BarChart2, X, ChevronRight, ListChecks,
+    Brain, Sparkles,
 } from "lucide-react";
 import {
     RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -19,6 +20,7 @@ import {
     ActionPlanGroup, MonitoringColumn, MonitoringCell, MonitoringRow,
 } from "@/types";
 import MonitoringTable, { monRowKey, buildMonRows } from "@/components/MonitoringTable";
+import type { AiAssessmentItem } from "@/types";
 import Link from "next/link";
 import toast from "react-hot-toast";
 
@@ -325,6 +327,11 @@ export default function AdminSessionDetailPage() {
     const [monRowData, setMonRowData] = useState<Record<string, MonRowData>>({});
     const [savingMonRows, setSavingMonRows] = useState(false);
 
+    // AI Reasoning state
+    const [aiLoading, setAiLoading] = useState(false);
+    const [aiError, setAiError] = useState("");
+    const [aiFilledCount, setAiFilledCount] = useState(0);
+
     const fetchData = async () => {
         try {
             const res = await api.get(`/sessions/admin/${sessionId}/results`);
@@ -431,6 +438,112 @@ export default function AdminSessionDetailPage() {
         }
         return results;
     }, [dimensions, responses, session]);
+
+    // ─── AI Generate: otomatis isi form analisis dari Reasoning Engine ─────────
+    const handleAiGenerate = async () => {
+        setAiLoading(true);
+        setAiError("");
+        setAiFilledCount(0);
+        try {
+            const assessments: AiAssessmentItem[] = subResults
+                .filter(sub => sub.evaluatorAnswers.length > 0)
+                .map(sub => {
+                    const dim = dimensions.find(d => d._id === sub.dimId);
+                    const finalIdx = sub.adjustment
+                        ? sub.adjustment.finalLevelIndex
+                        : sub.hasMajority ? sub.majorityLevelIndex : null;
+                    const notes = responses
+                        .flatMap(resp => { const item = resp.responses.find(r => r.subdimension === sub.subId); return item?.note ? [item.note] : []; })
+                        .join(" | ");
+                    return {
+                        dimension: dim?.name ?? "Unknown",
+                        dimension_id: sub.dimId,
+                        sub_dimension: sub.subName,
+                        sub_dimension_id: sub.subId,
+                        final_result: finalIdx !== null ? finalIdx + 1 : 0,
+                        // Kirim expected_level dari subAnalysis jika sudah diisi manual,
+                        // kalau belum route.ts akan hitung default otomatis
+                        expected_level: subAnalysis[sub.subId]?.el
+                            ? Number(subAnalysis[sub.subId].el)
+                            : undefined,
+                        assessment_note: notes || undefined,
+                    };
+                });
+
+            if (assessments.length === 0) { toast.error("Belum ada data assessment"); return; }
+
+            const res = await fetch("/api/analyze", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ assessments }),
+            });
+            const data = await res.json();
+
+            if (!data.success) {
+                setAiError(data.error ?? "Analisis AI gagal");
+                toast.error("AI Reasoning gagal: " + (data.error ?? "unknown"));
+                return;
+            }
+
+            const aiDimensions = (data.data?.dimensions ?? []) as Array<{
+                dimension_id: string;
+                strength_weakness?: string[];
+                opportunity_analysis?: string[];
+                subdimensions?: Array<{ sub_dimension_id: string; expected_level?: number; action_plan_items?: string[] }>;
+            }>;
+            let filled = 0;
+
+            // 1. Isi dimAnalysis (SW & OA per dimensi)
+            const newDimAnalysis: Record<string, DimState> = { ...dimAnalysis };
+            for (const aiDim of aiDimensions) {
+                if (aiDim.dimension_id) {
+                    newDimAnalysis[aiDim.dimension_id] = { sw: aiDim.strength_weakness ?? [], oa: aiDim.opportunity_analysis ?? [] };
+                    filled++;
+                }
+            }
+            setDimAnalysis(newDimAnalysis);
+
+            // 2. Isi subAnalysis (expected level)
+            const newSubAnalysis: Record<string, SubState> = { ...subAnalysis };
+            for (const aiDim of aiDimensions) {
+                for (const aiSub of aiDim.subdimensions ?? []) {
+                    if (aiSub.sub_dimension_id && aiSub.expected_level) {
+                        newSubAnalysis[aiSub.sub_dimension_id] = { el: String(aiSub.expected_level) };
+                        filled++;
+                    }
+                }
+            }
+            setSubAnalysis(newSubAnalysis);
+
+            // 3. Isi apGroups (action plans)
+            const newApGroups: ActionPlanGroup[] = [];
+            let groupOrder = 0;
+            for (const aiDim of aiDimensions) {
+                for (const aiSub of aiDim.subdimensions ?? []) {
+                    const items = (aiSub.action_plan_items ?? []).filter(i => i.trim());
+                    if (items.length > 0 && aiSub.sub_dimension_id) {
+                        const existingIdx = apGroups.findIndex(g => (g.subdimensions ?? []).includes(aiSub.sub_dimension_id));
+                        if (existingIdx >= 0) {
+                            newApGroups.push({ ...apGroups[existingIdx], items, order: groupOrder++ });
+                        } else {
+                            newApGroups.push({ label: "", items, subdimensions: [aiSub.sub_dimension_id], order: groupOrder++ });
+                        }
+                        filled++;
+                    }
+                }
+            }
+            if (newApGroups.length > 0) setApGroups(newApGroups);
+
+            setAiFilledCount(filled);
+            toast.success(`AI mengisi ${filled} field! Klik Save All untuk menyimpan.`);
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            setAiError(msg);
+            toast.error("AI error: " + msg);
+        } finally {
+            setAiLoading(false);
+        }
+    };
 
     const handleSave = async () => {
         setSaving(true);
@@ -667,215 +780,43 @@ export default function AdminSessionDetailPage() {
                 </div>
             )}
 
-            {/* Header + unified save */}
-            <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-bold t-secondary uppercase tracking-wider">Assessment Results & Analysis</h2>
-                <button
-                    onClick={async () => { await handleSave(); await handleSaveActionPlans(); }}
-                    disabled={saving || savingAP}
-                    className="btn-primary text-sm gap-2"
-                >
-                    {(saving || savingAP) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    Save All
-                </button>
+            {/* Header + AI Generate + Save All */}
+            <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+                <h2 className="text-sm font-bold t-secondary uppercase tracking-wider">Assessment Results &amp; Analysis</h2>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={handleAiGenerate}
+                        disabled={aiLoading || subResults.filter(s => s.evaluatorAnswers.length > 0).length === 0}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all border"
+                        style={{ background: "linear-gradient(135deg, rgba(139,92,246,0.12), rgba(168,85,247,0.06))", borderColor: "rgba(139,92,246,0.35)", color: aiLoading ? "#a78bfa" : "#c084fc" }}
+                    >
+                        {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Brain className="w-4 h-4" />}
+                        {aiLoading ? "AI Sedang Analisis..." : "Generate with AI"}
+                    </button>
+                    <button
+                        onClick={async () => { await handleSave(); await handleSaveActionPlans(); }}
+                        disabled={saving || savingAP}
+                        className="btn-primary text-sm gap-2"
+                    >
+                        {(saving || savingAP) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                        Save All
+                    </button>
+                </div>
             </div>
-
-            {/* Results Table */}
-            <div className="card overflow-x-auto">
-                <table className="w-full text-sm border-collapse" style={{ minWidth: "1380px" }}>
-                    <thead>
-                        <tr style={{ backgroundColor: "var(--bg-3)", borderBottom: "2px solid var(--border-2)" }}>
-                            <th className="px-3 py-3 text-left text-xs font-bold t-secondary uppercase tracking-wider w-28">Dimension</th>
-                            <th className="px-3 py-3 text-left text-xs font-bold t-secondary uppercase tracking-wider w-32">Sub-Dimension</th>
-                            <th className="px-3 py-3 text-left text-xs font-bold t-secondary uppercase tracking-wider w-36">Assessment Note</th>
-                            <th className="px-3 py-3 text-center text-xs font-bold t-secondary uppercase tracking-wider w-20">Final</th>
-                            <th className="px-3 py-3 text-left text-xs font-bold t-secondary uppercase tracking-wider" style={{ minWidth: "220px" }}>Strength / Weakness</th>
-                            <th className="px-3 py-3 text-left text-xs font-bold t-secondary uppercase tracking-wider" style={{ minWidth: "220px" }}>Opportunity Analysis</th>
-                            <th className="px-3 py-3 text-center text-xs font-bold t-secondary uppercase tracking-wider w-24">Expected</th>
-                            <th className="px-3 py-3 text-left text-xs font-bold t-secondary uppercase tracking-wider" style={{ minWidth: "200px" }}>Action Plan</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {dimensions.map((dim, dIdx) => {
-                            const dimSubs = subResults.filter(s => s.dimId === dim._id);
-                            const colorClass = DIM_COLORS[dIdx % DIM_COLORS.length];
-                            const dimState = dimAnalysis[dim._id] ?? { sw: [], oa: [] };
-
-                            return dimSubs.map((sub, sIdx) => {
-                                const finalIdx = sub.adjustment ? sub.adjustment.finalLevelIndex
-                                    : sub.hasMajority ? sub.majorityLevelIndex : null;
-                                const finalBobot = finalIdx !== null ? finalIdx + 1 : null;
-                                const notes = responses.flatMap(resp => {
-                                    const item = resp.responses.find(r => r.subdimension === sub.subId);
-                                    return item?.note ? [item.note] : [];
-                                });
-                                const elVal = subAnalysis[sub.subId]?.el ?? "";
-
-                                return (
-                                    <tr key={sub.subId} style={{
-                                        borderBottom: "1px solid var(--border)",
-                                        backgroundColor: sIdx % 2 === 0 ? "var(--bg)" : "var(--bg-2)",
-                                    }}>
-                                        {/* Dimension — rowspan */}
-                                        {sIdx === 0 && (
-                                            <td rowSpan={dimSubs.length} className="px-3 py-3 align-middle"
-                                                style={{ borderRight: "1px solid var(--border-2)", backgroundColor: "var(--bg-3)", verticalAlign: "middle" }}>
-                                                <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold border ${colorClass}`}>
-                                                    {dim.name}
-                                                </div>
-                                            </td>
-                                        )}
-
-                                        {/* Sub-Dimension */}
-                                        <td className="px-3 py-3 align-top text-xs font-medium t-primary" style={{ borderRight: "1px solid var(--border)" }}>
-                                            {sub.subName}
-                                        </td>
-
-                                        {/* Assessment Note */}
-                                        <td className="px-3 py-3 align-top" style={{ borderRight: "1px solid var(--border)" }}>
-                                            {notes.length > 0 ? (
-                                                <ul className="space-y-1">
-                                                    {notes.map((note, i) => (
-                                                        <li key={i} className="flex items-start gap-1.5">
-                                                            <span className="mt-1.5 w-1 h-1 rounded-full shrink-0 bg-purple-400" />
-                                                            <p className="text-[11px] t-secondary leading-snug">{note}</p>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            ) : <span className="text-[11px] t-muted italic">—</span>}
-                                        </td>
-
-                                        {/* Final Result */}
-                                        <td className="px-3 py-3 text-center align-middle" style={{ borderRight: "1px solid var(--border)" }}>
-                                            {finalBobot !== null ? (
-                                                <span className={`text-xl font-black ${finalBobot >= 4 ? "text-green-400" : finalBobot === 3 ? "text-blue-400" : finalBobot === 2 ? "text-amber-400" : "text-red-400"}`}>
-                                                    {finalBobot}
-                                                </span>
-                                            ) : <span className="text-xs t-muted">—</span>}
-                                        </td>
-
-                                        {/* Strength / Weakness — rowspan, dynamic list, per dimension */}
-                                        {sIdx === 0 && (
-                                            <td rowSpan={dimSubs.length} className="px-3 py-3 align-top"
-                                                style={{ borderRight: "1px solid var(--border)", verticalAlign: "top" }}>
-                                                <DynamicList
-                                                    items={dimState.sw.length > 0 ? dimState.sw : [""]}
-                                                    onChange={items => updateDim(dim._id, "sw", items)}
-                                                    placeholder="Describe strength or weakness..."
-                                                    accentColor="bg-green-400"
-                                                    rows={3}
-                                                />
-                                            </td>
-                                        )}
-
-                                        {/* Opportunity Analysis — rowspan, dynamic list, per dimension */}
-                                        {sIdx === 0 && (
-                                            <td rowSpan={dimSubs.length} className="px-3 py-3 align-top"
-                                                style={{ borderRight: "1px solid var(--border)", verticalAlign: "top" }}>
-                                                <DynamicList
-                                                    items={dimState.oa.length > 0 ? dimState.oa : [""]}
-                                                    onChange={items => updateDim(dim._id, "oa", items)}
-                                                    placeholder="Opportunity analysis..."
-                                                    accentColor="bg-blue-400"
-                                                    rows={3}
-                                                />
-                                            </td>
-                                        )}
-
-                                        {/* Expected Level — per subdimension */}
-                                        <td className="px-3 py-3 text-center align-middle" style={{ borderRight: "1px solid var(--border)" }}>
-                                            <select
-                                                value={elVal}
-                                                onChange={e => setSubAnalysis(prev => ({
-                                                    ...prev,
-                                                    [sub.subId]: { el: e.target.value },
-                                                }))}
-                                                className="w-16 text-center px-1 py-1.5 rounded-lg text-sm font-bold focus:outline-none transition-all"
-                                                style={{ backgroundColor: "var(--bg-4)", border: "1px solid var(--border-2)", color: "var(--text-primary)" }}
-                                            >
-                                                <option value="">—</option>
-                                                {[1, 2, 3, 4, 5].map(n => (
-                                                    <option key={n} value={n}>{n}</option>
-                                                ))}
-                                            </select>
-                                        </td>
-
-                                        {/* Action Plan — compact card + open drawer */}
-                                        {(() => {
-                                            const grpIdx = apGroups.findIndex(g => (g.subdimensions ?? []).includes(sub.subId));
-                                            const grp = grpIdx >= 0 ? apGroups[grpIdx] : null;
-
-                                            if (!grp) {
-                                                // No group — show "Add" button
-                                                return (
-                                                    <td className="px-3 py-3 align-middle" style={{ borderLeft: "1px solid var(--border)" }}>
-                                                        <button
-                                                            onClick={() => {
-                                                                const newIdx = apGroups.length;
-                                                                setApGroups(prev => [
-                                                                    ...prev,
-                                                                    { label: "", items: [""], subdimensions: [sub.subId], order: prev.length },
-                                                                ]);
-                                                                setApDrawerGrpIdx(newIdx);
-                                                                setApDrawerOpen(true);
-                                                            }}
-                                                            className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition-all border border-dashed hover:border-orange-400/40 hover:text-orange-400 group"
-                                                            style={{ color: "var(--text-muted)", borderColor: "var(--border-2)" }}
-                                                        >
-                                                            <Plus className="w-3 h-3 group-hover:text-orange-400" />
-                                                            Add Action Plan
-                                                        </button>
-                                                    </td>
-                                                );
-                                            }
-
-                                            // Sub is in a group — only render on first sub (for rowspan)
-                                            const grpSubsInOrder = subResults.filter(s => (grp.subdimensions ?? []).includes(s.subId));
-                                            if (grpSubsInOrder[0]?.subId !== sub.subId) return null;
-
-                                            const stepCount = (grp.items ?? []).filter(i => i.trim()).length;
-                                            return (
-                                                <td
-                                                    rowSpan={grpSubsInOrder.length}
-                                                    className="px-3 py-3 align-top"
-                                                    style={{ borderLeft: "1px solid var(--border-2)", verticalAlign: "top" }}
-                                                >
-                                                    {/* Preview card */}
-                                                    <div
-                                                        className="rounded-xl p-3 cursor-pointer hover:border-orange-400/40 transition-all group"
-                                                        style={{ backgroundColor: "rgba(251,146,60,0.06)", border: "1px solid rgba(251,146,60,0.2)" }}
-                                                        onClick={() => { setApDrawerGrpIdx(grpIdx); setApDrawerOpen(true); }}
-                                                    >
-                                                        <div className="flex items-center justify-between mb-2">
-                                                            <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wider">Action Plan</span>
-                                                            <ChevronRight className="w-3 h-3 text-orange-400/60 group-hover:text-orange-400 transition-colors" />
-                                                        </div>
-                                                        <div className="flex flex-wrap gap-1.5 mb-2">
-                                                            <span className="text-[10px] px-1.5 py-0.5 rounded-md font-semibold" style={{ backgroundColor: "rgba(251,146,60,0.15)", color: "rgb(251,146,60)" }}>
-                                                                {stepCount} step{stepCount !== 1 ? "s" : ""}
-                                                            </span>
-                                                            <span className="text-[10px] px-1.5 py-0.5 rounded-md font-semibold" style={{ backgroundColor: "rgba(251,146,60,0.1)", color: "rgb(251,146,60)" }}>
-                                                                {grpSubsInOrder.length} sub{grpSubsInOrder.length !== 1 ? "s" : ""} merged
-                                                            </span>
-                                                        </div>
-                                                        {stepCount > 0 && (
-                                                            <p className="text-[10px] t-muted leading-snug line-clamp-2">
-                                                                {(grp.items ?? []).filter(i => i.trim())[0]}
-                                                                {stepCount > 1 ? ` +${stepCount - 1} more...` : ""}
-                                                            </p>
-                                                        )}
-                                                        <p className="text-[10px] text-orange-400/70 mt-2 font-medium">Click to edit →</p>
-                                                    </div>
-                                                </td>
-                                            );
-                                        })()}
-                                    </tr>
-                                );
-                            });
-                        })}
-                    </tbody>
-                </table>
-            </div>
+            {aiError && (
+                <div className="mb-4 flex items-start gap-3 p-3 rounded-xl bg-red-500/5 border border-red-500/20">
+                    <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                    <div className="flex-1"><p className="text-xs font-semibold text-red-400">AI Reasoning Gagal</p><p className="text-xs t-secondary mt-0.5 leading-relaxed">{aiError}</p></div>
+                    <button onClick={() => setAiError("")} className="p-1 rounded-md hover:bg-red-500/10 text-red-400/60 hover:text-red-400"><X className="w-3.5 h-3.5" /></button>
+                </div>
+            )}
+            {aiFilledCount > 0 && !aiLoading && !aiError && (
+                <div className="mb-4 flex items-center gap-3 p-3 rounded-xl border" style={{ backgroundColor: "rgba(139,92,246,0.06)", borderColor: "rgba(139,92,246,0.25)" }}>
+                    <Sparkles className="w-4 h-4 text-purple-400 shrink-0" />
+                    <p className="text-xs text-purple-300 flex-1">AI telah mengisi <strong>{aiFilledCount} field</strong> analisis. Review lalu klik <strong>Save All</strong>.</p>
+                    <button onClick={() => setAiFilledCount(0)} className="p-1 rounded-md hover:bg-purple-500/10 text-purple-400/60 hover:text-purple-400"><X className="w-3.5 h-3.5" /></button>
+                </div>
+            )}
 
             {/* Action Plan Drawer */}
             <ActionPlanDrawer

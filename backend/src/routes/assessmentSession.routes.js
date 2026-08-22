@@ -7,6 +7,7 @@ import {
   getAllSessionsAdmin, getSessionResultsAdmin,
   saveSessionAnalysis, saveActionPlanGroups,
   saveMonitoringColumns, saveMonitoringData, saveMonitoringRows,
+  saveAiAnalysis, generateAiAnalysis, generateAiAnalysisCompany,
 } from "../controllers/assessmentSession.controller.js";
 
 const router = express.Router();
@@ -22,6 +23,8 @@ router.patch("/admin/:id/action-plan-groups", ...adminGuard, saveActionPlanGroup
 router.patch("/admin/:id/monitoring-columns", ...adminGuard, saveMonitoringColumns);
 router.patch("/admin/:id/monitoring-data",    ...adminGuard, saveMonitoringData);
 router.patch("/admin/:id/monitoring-rows",    ...adminGuard, saveMonitoringRows);
+router.patch("/admin/:id/ai-analysis",        ...adminGuard, saveAiAnalysis);  // PERMANENT, sekali saja (manual save)
+router.post("/admin/:id/generate-ai",         ...adminGuard, generateAiAnalysis); // AUTO-GENERATE dari engine
 
 // ─── Company manages sessions ─────────────────────────────────────────────────
 router.get("/company", ...companyGuard, getCompanySessions);
@@ -29,9 +32,10 @@ router.post("/company", ...companyGuard, createSession);
 router.put("/company/:id", ...companyGuard, updateSession);
 router.delete("/company/:id", ...companyGuard, deleteSession);
 
-// ─── Company: results & adjustment ───────────────────────────────────────────
-router.get("/company/:id/results", ...companyGuard, getSessionResults);
-router.post("/company/:id/adjust", ...companyGuard, adjustSubdimension);
+// ─── Company: results, adjustment & AI ───────────────────────────────────────
+router.get("/company/:id/results",      ...companyGuard, getSessionResults);
+router.post("/company/:id/adjust",      ...companyGuard, adjustSubdimension);
+router.post("/company/:id/generate-ai", ...companyGuard, generateAiAnalysisCompany);
 
 // ─── Member views assigned sessions ──────────────────────────────────────────
 router.get("/my", protect, requireAccountRole("Company"), getMySessions);

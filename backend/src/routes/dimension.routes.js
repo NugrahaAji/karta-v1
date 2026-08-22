@@ -5,6 +5,7 @@ import {
   getDimensions,
   getDimension,
   createDimension,
+  bulkCreateDimensions,
   updateDimension,
   deleteDimension,
   addSubdimension,
@@ -33,6 +34,7 @@ router.get("/:id", getDimension);
 const superAdminGuard = [protect, requireAccountRole("superAdmin")];
 
 // Dimension CRUD
+router.post("/bulk", ...superAdminGuard, bulkCreateDimensions);   // bulk create semua sekaligus
 router.post("/", ...superAdminGuard, [nameRequired, detailOptional], createDimension);
 router.put("/:id", ...superAdminGuard, [detailOptional], updateDimension);
 router.delete("/:id", ...superAdminGuard, deleteDimension);

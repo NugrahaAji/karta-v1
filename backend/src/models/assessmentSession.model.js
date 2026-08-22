@@ -1,12 +1,15 @@
 import mongoose from "mongoose";
 
-// Adjustment sub-schema
-const adjustmentSchema = new mongoose.Schema({
-  dimension: { type: mongoose.Schema.Types.ObjectId, required: true },
-  subdimension: { type: mongoose.Schema.Types.ObjectId, required: true },
+// finalScore sub-schema — satu entry per subdimensi yang telah memiliki nilai final
+// source: 'majority'  → dihitung otomatis dari modus jawaban semua assessor
+//         'adjusted'  → di-override manual oleh Company
+const finalScoreSchema = new mongoose.Schema({
+  dimension:       { type: mongoose.Schema.Types.ObjectId, required: true },
+  subdimension:    { type: mongoose.Schema.Types.ObjectId, required: true },
   finalLevelIndex: { type: Number, required: true },
-  adjustedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-  adjustedAt: { type: Date, default: Date.now },
+  source:          { type: String, enum: ["majority", "adjusted"], default: "majority" },
+  adjustedBy:      { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  adjustedAt:      { type: Date },
 });
 
 // SuperAdmin: Strength/Weakness + Opportunity Analysis per dimension
@@ -82,8 +85,11 @@ const assessmentSessionSchema = new mongoose.Schema(
     startDate: { type: Date },
     endDate: { type: Date },
 
-    // Company adjustments for disputed subdimensions
-    adjustments: [adjustmentSchema],
+    // Final scores per subdimension:
+    // - source='majority'  → auto-computed dari modus jawaban assessor
+    // - source='adjusted'  → di-override manual oleh Company
+    // Semua subdimensi yang sudah punya data (majority atau adjusted) disimpan di sini.
+    finalScores: [finalScoreSchema],
 
     // SuperAdmin analysis
     dimensionAnalysis:    [dimensionAnalysisSchema],
@@ -98,6 +104,13 @@ const assessmentSessionSchema = new mongoose.Schema(
 
     // SuperAdmin monitoring rows (action-plan-based)
     monitoringRows:       [monitoringRowSchema],
+
+    // ─── AI Reasoning Result (permanent, one-time generate) ───────────────────
+    // Menyimpan hasil flat array per sub-dimensi dari Reasoning Engine.
+    // Setelah terisi, flag aiAnalysisLocked = true agar tidak bisa di-generate ulang.
+    aiAnalysis:       { type: mongoose.Schema.Types.Mixed, default: null },
+    aiGeneratedAt:    { type: Date, default: null },
+    aiAnalysisLocked: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
