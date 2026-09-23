@@ -32,11 +32,25 @@ app.use(helmet());
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 
 // Build allowed origins: FRONTEND_URL (prod) + CLIENT_URL (local fallback)
-const allowedOrigins = [
+// Also auto-add www variants so both karta.my.id and www.karta.my.id are accepted
+const _baseOrigins = [
   process.env.FRONTEND_URL,
   process.env.CLIENT_URL,
   "http://localhost:3000",
 ].filter(Boolean);
+
+const allowedOrigins = [...new Set(
+  _baseOrigins.flatMap((o) => {
+    try {
+      const url = new URL(o);
+      const withWww    = `${url.protocol}//www.${url.host}`;
+      const withoutWww = `${url.protocol}//${url.host.replace(/^www\./, "")}`;
+      return [o, withWww, withoutWww];
+    } catch {
+      return [o];
+    }
+  })
+)];
 
 app.use(
   cors({
