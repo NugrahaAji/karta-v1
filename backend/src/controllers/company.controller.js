@@ -11,20 +11,23 @@ export const getMembers = async (req, res) => {
       .select("-password")
       .populate("allowedDimensions", "name detail")
       .sort({ createdAt: -1 });
-    res.json({ members });
+
+    const availableRoles = req.user.companyProfile?.processMiningTeam ?? [];
+
+    res.json({ members, availableRoles });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
 // ─── POST /api/company/members ────────────────────────────────────────────────
-// Company creates a new member account (role is always "member")
+// Company creates a new member account (role is always "member", memberRole is team role)
 export const createMember = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
   try {
-    const { name, email, password, allowedDimensions } = req.body;
+    const { name, email, password, memberRole, allowedDimensions } = req.body;
 
     const exists = await User.findOne({ email });
     if (exists) return res.status(400).json({ error: "Email already registered" });
@@ -37,12 +40,21 @@ export const createMember = async (req, res) => {
       }
     }
 
+    let assignedMemberRole = "";
+    if (typeof memberRole === "string" && memberRole.trim()) {
+      assignedMemberRole = memberRole.trim();
+    } else if (req.user.companyProfile?.processMiningTeam) {
+      const teams = req.user.companyProfile.processMiningTeam ?? [];
+      if (teams.length > 0) assignedMemberRole = teams[0];
+    }
+
     const member = await User.create({
       name,
       email,
       password,
       accountRole: "Company",       // same accountRole as parent
-      role: "member",               // company-created accounts are always "member"
+      role: "member",               // company-created accounts are always role="member"
+      memberRole: assignedMemberRole,
       createdBy: req.user._id,
       isVerified: true,             // company-created accounts skip email verification
       plan: req.user.plan,          // inherit plan from company
@@ -66,8 +78,11 @@ export const updateMember = async (req, res) => {
     const member = await User.findOne({ _id: req.params.id, createdBy: req.user._id });
     if (!member) return res.status(404).json({ error: "Member not found" });
 
-    const { name, isActive, allowedDimensions } = req.body;
+    const { name, memberRole, isActive, allowedDimensions } = req.body;
     if (name !== undefined) member.name = name;
+    if (memberRole !== undefined && typeof memberRole === "string") {
+      member.memberRole = memberRole.trim();
+    }
     if (isActive !== undefined) member.isActive = isActive;
 
     // Update assigned dimensions if provided

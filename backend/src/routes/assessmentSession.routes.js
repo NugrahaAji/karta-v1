@@ -6,14 +6,17 @@ import {
   getSessionResults, adjustSubdimension,
   getAllSessionsAdmin, getSessionResultsAdmin,
   saveSessionAnalysis, saveActionPlanGroups,
-  saveMonitoringColumns, saveMonitoringData, saveMonitoringRows,
-  saveAiAnalysis, generateAiAnalysis, generateAiAnalysisCompany,
+  saveMonitoringColumns, saveMonitoringData, saveMonitoringRows, saveMonitoringRowsCompany, saveExpectedLevelCompany,
+  saveAiAnalysis, saveAiAnalysisPublic, generateAiAnalysis, generateAiAnalysisCompany, saveAiAnalysisCompany,
 } from "../controllers/assessmentSession.controller.js";
 
 const router = express.Router();
 
 const companyGuard  = [protect, requireAccountRole("Company")];
 const adminGuard    = [protect, requireAccountRole("superAdmin")];
+
+// ─── AI callback: one-time result persistence, no user role required ─────────
+router.post("/ai/:id/analysis", saveAiAnalysisPublic);
 
 // ─── SuperAdmin: all sessions + analysis + monitoring ────────────────────────
 router.get("/admin",              ...adminGuard, getAllSessionsAdmin);
@@ -36,6 +39,9 @@ router.delete("/company/:id", ...companyGuard, deleteSession);
 router.get("/company/:id/results",      ...companyGuard, getSessionResults);
 router.post("/company/:id/adjust",      ...companyGuard, adjustSubdimension);
 router.post("/company/:id/generate-ai", ...companyGuard, generateAiAnalysisCompany);
+router.patch("/company/:id/ai-analysis",...companyGuard, saveAiAnalysisCompany); // simpan hasil AI dari frontend
+router.patch("/company/:id/monitoring-rows", ...companyGuard, saveMonitoringRowsCompany);
+router.patch("/company/:id/expected-level", ...companyGuard, saveExpectedLevelCompany);
 
 // ─── Member views assigned sessions ──────────────────────────────────────────
 router.get("/my", protect, requireAccountRole("Company"), getMySessions);

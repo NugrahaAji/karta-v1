@@ -13,7 +13,7 @@ const companyGuard = [protect, requireAccountRole("Company")];
 // GET    /api/company/members         → list all members created by this company
 router.get("/members", ...companyGuard, getMembers);
 
-// POST   /api/company/members         → create a new member account (always role=member)
+// POST   /api/company/members         → create a new member account (always role=member, with memberRole)
 router.post(
   "/members",
   ...companyGuard,
@@ -21,6 +21,7 @@ router.post(
     body("name").notEmpty().withMessage("Name is required"),
     body("email").isEmail().withMessage("Valid email is required"),
     body("password").isLength({ min: 6 }).withMessage("Password must be at least 6 characters"),
+    body("memberRole").optional().isString().trim(),
     body("allowedDimensions").optional().isArray().withMessage("allowedDimensions must be an array"),
     body("allowedDimensions.*").optional().isMongoId().withMessage("Each dimension ID must be a valid ID"),
   ],
@@ -34,6 +35,7 @@ router.put(
   [
     body("name").optional().notEmpty(),
     body("password").optional().isLength({ min: 6 }),
+    body("memberRole").optional().isString().trim(),
     body("isActive").optional().isBoolean(),
     body("allowedDimensions").optional().isArray().withMessage("allowedDimensions must be an array"),
     body("allowedDimensions.*").optional().isMongoId().withMessage("Each dimension ID must be a valid ID"),

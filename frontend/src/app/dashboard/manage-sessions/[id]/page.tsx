@@ -5,7 +5,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import {
     ArrowLeft, Loader2, AlertCircle, Users, CheckCircle2,
     AlertTriangle, ChevronDown, Layers, BarChart3, Gavel,
-    Info, Send, Clock, Table2, MessageSquare, Brain
+    Info, Send, Clock, Table2, MessageSquare, Brain, X
 } from "lucide-react";
 import {
     RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -15,9 +15,9 @@ import {
 import api from "@/lib/api";
 import {
     AssessmentSession, Dimension, SubDimension, AssessmentResponse,
-    ResponseItem, FinalScore
+    ResponseItem, FinalScore, MonitoringRow
 } from "@/types";
-import MonitoringTable, { monRowKey } from "@/components/MonitoringTable";
+import MonitoringTable, { monRowKey, buildMonRows } from "@/components/MonitoringTable";
 import AiReasoningPanel, { AssessmentPayloadItem } from "@/components/AiReasoningPanel";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -31,11 +31,25 @@ const DIM_COLORS = [
     "border-teal-500/30 text-teal-400 bg-teal-500/10",
 ];
 
+type MonRowData = Omit<MonitoringRow, "_id" | "actionPlanGroupId" | "actionPlanItemIdx">;
+
+interface SavedAiResult {
+    dimension_id?: string;
+    dimension_name?: string;
+    dimension?: string;
+    sub_dimension_id?: string;
+    sub_dimension_name?: string;
+    sub_dimension?: string;
+    strength_weakness?: string;
+    opportunity_analysis?: string[];
+    action_plan?: string[];
+}
+
 interface SubResult {
     subId: string;
     subName: string;
     dimId: string;
-    levels: { _id: string; name: string; criteria: { _id: string; name: string }[] }[];
+    levels: { _id: string; name: string; detail: string; criteria: { _id: string; name: string; detail: string }[] }[];
     evaluatorAnswers: { userId: string; userName: string; levelIndex: number; criteriaId?: string; criteriaName?: string }[];
     /** vote count per levelIndex */
     voteCounts: Record<number, number>;
@@ -65,6 +79,10 @@ export default function SessionResultsPage() {
     const [view, setView] = useState<"detail" | "table">("table");
     const [selectedDimIdx, setSelectedDimIdx] = useState(0);
     const [showAiPanel, setShowAiPanel] = useState(false);
+    const [monRowData, setMonRowData] = useState<Record<string, MonRowData>>({});
+    const [savingMonitoring, setSavingMonitoring] = useState(false);
+    const [savingExpectedSubId, setSavingExpectedSubId] = useState<string | null>(null);
+    const [expectedDetailSubId, setExpectedDetailSubId] = useState<string | null>(null);
     // Deep-link: ?tab=monitoring opens monitoring tab directly
     const [activeTab, setActiveTab] = useState<"results" | "monitoring">(
         searchParams?.get("tab") === "monitoring" ? "monitoring" : "results"
@@ -73,9 +91,25 @@ export default function SessionResultsPage() {
     const fetchResults = async () => {
         try {
             const res = await api.get(`/sessions/company/${sessionId}/results`);
-            setSession(res.data.session);
+            const sess = res.data.session as AssessmentSession;
+            setSession(sess);
             setDimensions(res.data.dimensions ?? []);
             setResponses(res.data.responses ?? []);
+
+            const monitoring: Record<string, MonRowData> = {};
+            for (const row of sess.monitoringRows ?? []) {
+                const groupKey = row.actionPlanGroupId ?? (row.subdimension ? `__no_ap_${row.subdimension}` : "");
+                monitoring[monRowKey(groupKey, row.actionPlanItemIdx)] = {
+                    subdimension: row.subdimension ?? "",
+                    timeline: row.timeline ?? [],
+                    timelineStatuses: row.timelineStatuses ?? [],
+                    pic: row.pic ?? "",
+                    checker: row.checker ?? "",
+                    achievementStatus: row.achievementStatus ?? "",
+                    notes: row.notes ?? "",
+                };
+            }
+            setMonRowData(monitoring);
         } catch {
             setError("Session not found or access denied.");
         } finally {
@@ -146,7 +180,8 @@ export default function SessionResultsPage() {
                     levels: (sub.levels ?? []).map(l => ({
                         _id:      l._id,
                         name:     l.name,
-                        criteria: (l.criteria ?? []).map(c => ({ _id: c._id, name: c.name })),
+                        detail:   l.detail ?? "",
+                        criteria: (l.criteria ?? []).map(c => ({ _id: c._id, name: c.name, detail: c.detail ?? "" })),
                     })),
                     evaluatorAnswers,
                     voteCounts,
@@ -166,6 +201,31 @@ export default function SessionResultsPage() {
     const adjustedCount  = subResults.filter(s => s.finalScore?.source === "adjusted").length;
     const noResponseCount = subResults.filter(s => s.evaluatorAnswers.length === 0).length;
 
+    const savedAiResults = useMemo<SavedAiResult[]>(
+        () => Array.isArray(session?.aiAnalysis) ? session.aiAnalysis as SavedAiResult[] : [],
+        [session?.aiAnalysis]
+    );
+
+    const getSavedAiResult = (sub: SubResult, dimensionName: string) => {
+        const matched = savedAiResults.find(item =>
+            item.sub_dimension_id === sub.subId ||
+            ((item.sub_dimension_name === sub.subName || item.sub_dimension === sub.subName) &&
+             (!item.dimension_id || item.dimension_id === sub.dimId) &&
+             (!item.dimension_name || item.dimension_name === dimensionName) &&
+             (!item.dimension || item.dimension === dimensionName))
+        );
+        if (matched) return matched;
+
+        const analyzedSubs = subResults.filter(item =>
+            item.evaluatorAnswers.length > 0 || item.finalScore !== undefined
+        );
+        const legacyResult = savedAiResults[analyzedSubs.findIndex(item => item.subId === sub.subId)];
+        const hasIdentity = legacyResult && (
+            legacyResult.sub_dimension_id || legacyResult.sub_dimension_name || legacyResult.sub_dimension
+        );
+        return hasIdentity ? undefined : legacyResult;
+    };
+
     // ─── Build AI Reasoning payload ───────────────────────────────────────────
     const aiAssessments = useMemo<AssessmentPayloadItem[]>(() => {
         return subResults
@@ -178,7 +238,7 @@ export default function SessionResultsPage() {
                 const finalResult = finalIdx !== null ? finalIdx + 1 : 0;
                 const expectedLevel =
                     session?.subdimensionAnalysis?.find(s => s.subdimension === sub.subId)?.expectedLevel
-                    ?? finalResult + 1;
+                    ?? 3;
                 const notes = responses
                     .flatMap(resp => {
                         const item = resp.responses.find(r => r.subdimension === sub.subId);
@@ -196,6 +256,73 @@ export default function SessionResultsPage() {
                 };
             });
     }, [subResults, dimensions, session, responses]);
+
+    const handleExpectedLevelChange = async (sub: SubResult, expectedLevel: number) => {
+        setSavingExpectedSubId(sub.subId);
+        try {
+            await api.patch(`/sessions/company/${sessionId}/expected-level`, {
+                dimension: sub.dimId,
+                subdimension: sub.subId,
+                expectedLevel,
+            });
+            setSession(previous => previous ? {
+                ...previous,
+                subdimensionAnalysis: [
+                    ...(previous.subdimensionAnalysis ?? []).filter(item => item.subdimension !== sub.subId),
+                    { dimension: sub.dimId, subdimension: sub.subId, expectedLevel },
+                ],
+            } : previous);
+            toast.success("Expected level updated");
+        } catch {
+            toast.error("Failed to update expected level");
+        } finally {
+            setSavingExpectedSubId(null);
+        }
+    };
+
+    const handleSaveMonitoring = async () => {
+        setSavingMonitoring(true);
+        try {
+            const rows = buildMonRows(session?.actionPlanGroups ?? [], subResults, dimensions);
+            const monitoringRows = rows.flatMap(row => {
+                const groupKey = row.grp._id ?? String(row.grpIdx);
+                const data = monRowData[monRowKey(groupKey, row.itemIdx)];
+                if (!data) return [];
+
+                const hasData = (data.timelineStatuses?.length ?? 0) > 0 || data.timeline.length > 0 || data.pic.trim() || data.checker.trim() ||
+                    data.achievementStatus || data.notes.trim();
+                if (!hasData) return [];
+
+                return [{
+                    actionPlanGroupId: row.grpIdx >= 0 && !row.grp._id?.startsWith("__") ? row.grp._id ?? null : null,
+                    actionPlanItemIdx: row.itemIdx,
+                    subdimension: data.subdimension || row.sub?.subId || null,
+                    timeline: data.timeline,
+                    timelineStatuses: data.timelineStatuses ?? [],
+                    pic: data.pic,
+                    checker: data.checker,
+                    achievementStatus: data.achievementStatus,
+                    notes: data.notes,
+                }];
+            });
+
+            await api.patch(`/sessions/company/${sessionId}/monitoring-rows`, { monitoringRows });
+            toast.success("Monitoring saved");
+            await fetchResults();
+        } catch {
+            toast.error("Failed to save monitoring");
+        } finally {
+            setSavingMonitoring(false);
+        }
+    };
+
+    const handleDeleteMonitoring = (key: string) => {
+        setMonRowData(previous => {
+            const next = { ...previous };
+            delete next[key];
+            return next;
+        });
+    };
 
     const handleAdjust = async (subId: string, dimId: string) => {
         setSaving(true);
@@ -319,21 +446,26 @@ export default function SessionResultsPage() {
                 )}
             </div>
 
-            {/* ─── Monitoring Tab (read-only) ──────────────────────── */}
+            {/* ─── Monitoring Tab ─────────────────────────────────── */}
             {activeTab === "monitoring" && (() => {
-                const apGroups = session.actionPlanGroups ?? [];
-                const monRowMap: Record<string, { subdimension?: string; timeline: number[]; pic: string; checker: string; achievementStatus: "" | "Not Started" | "Ongoing" | "Completed" | "Delayed"; notes: string }> = {};
-                for (const row of session.monitoringRows ?? []) {
-                    const k = monRowKey(row.actionPlanGroupId ?? "", row.actionPlanItemIdx);
-                    monRowMap[k] = {
-                        subdimension: row.subdimension ?? "",
-                        timeline: row.timeline ?? [],
-                        pic: row.pic ?? "",
-                        checker: row.checker ?? "",
-                        achievementStatus: (row.achievementStatus ?? "") as "" | "Not Started" | "Ongoing" | "Completed" | "Delayed",
-                        notes: row.notes ?? "",
-                    };
-                }
+                const manualGroups = session.actionPlanGroups ?? [];
+                const coveredSubdimensions = new Set(manualGroups.flatMap(group => group.subdimensions));
+                const aiGroups = subResults.flatMap((sub, index) => {
+                    if (coveredSubdimensions.has(sub.subId)) return [];
+                    const actionPlan = getSavedAiResult(
+                        sub,
+                        dimensions.find(dimension => dimension._id === sub.dimId)?.name ?? ""
+                    )?.action_plan?.filter(item => item.trim()) ?? [];
+                    if (actionPlan.length === 0) return [];
+                    return [{
+                        _id: `__no_ap_${sub.subId}`,
+                        label: "AI Action Plan",
+                        items: actionPlan,
+                        subdimensions: [sub.subId],
+                        order: manualGroups.length + index,
+                    }];
+                });
+                const apGroups = [...manualGroups, ...aiGroups];
                 const subAnalysis: Record<string, { el: string }> = {};
                 for (const s of session.subdimensionAnalysis ?? []) {
                     subAnalysis[s.subdimension] = { el: s.expectedLevel != null ? String(s.expectedLevel) : "" };
@@ -348,9 +480,20 @@ export default function SessionResultsPage() {
                         apGroups={apGroups}
                         subResults={subResults}
                         dimensions={dimensions}
-                        monData={monRowMap}
+                        monData={monRowData}
+                        onChangeRow={(key, data) => setMonRowData(previous => ({
+                            ...previous,
+                            [key]: {
+                                subdimension: "", timeline: [], timelineStatuses: [], pic: "", checker: "", achievementStatus: "", notes: "",
+                                ...previous[key],
+                                ...data,
+                            },
+                        }))}
+                        onDeleteRow={handleDeleteMonitoring}
                         subAnalysis={subAnalysis}
                         finalResults={finalResults}
+                        saving={savingMonitoring}
+                        onSave={handleSaveMonitoring}
                     />
                 );
             })()}
@@ -358,8 +501,9 @@ export default function SessionResultsPage() {
             {/* ─── FINAL RESULT MEASUREMENT ──────────────────────────── */}
             {activeTab === "results" && subResults.length > 0 && (() => {
 
-                // Radar data: one point per subdimension
-                const radarData = subResults.map(sub => {
+                // Radar data: only subdimensions that have 5 levels
+                const radarSubs = subResults.filter(sub => (sub.levels?.length ?? 0) === 5);
+                const radarData = radarSubs.map(sub => {
                     const finalLevelIdx = sub.finalScore?.finalLevelIndex ?? (sub.hasMajority ? sub.majorityLevelIndex : null);
                     return {
                         subject: sub.subName,
@@ -368,119 +512,121 @@ export default function SessionResultsPage() {
                     };
                 });
 
-                // Bar data: average final result per dimension
-                const barData = dimensions.map((dim, dIdx) => {
-                    const dimSubs = subResults.filter(s => s.dimId === dim._id);
-                    const values = dimSubs.map(sub => {
-                        const idx = sub.finalScore?.finalLevelIndex ?? (sub.hasMajority ? sub.majorityLevelIndex : null);
-                        return idx !== null ? idx + 1 : 0;
-                    }).filter(v => v > 0);
-                    const avg = values.length > 0
-                        ? Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 10) / 10
-                        : 0;
-                    return { name: dIdx + 1, dimName: dim.name, avg };
+                const TECH_COLORS = ["#38bdf8", "#06b6d4", "#2dd4bf", "#60a5fa", "#818cf8"];
+                const techSubs = subResults.filter(s => {
+                    const dim = dimensions.find(d => d._id === s.dimId);
+                    return dim?.name.toLowerCase().includes("tech") || (s.levels?.length ?? 0) === 4;
                 });
-
-                const BAR_COLORS = ["#a78bfa","#60a5fa","#34d399","#fbbf24","#f472b6","#2dd4bf"];
+                const techBarData = techSubs.map(sub => {
+                    const idx = sub.finalScore?.finalLevelIndex ?? (sub.hasMajority ? sub.majorityLevelIndex : null);
+                    const levelObj = idx !== null && sub.levels?.[idx] ? sub.levels[idx] : null;
+                    return {
+                        name: sub.subName.length > 16 ? sub.subName.slice(0, 16) + "…" : sub.subName,
+                        fullName: sub.subName,
+                        value: idx !== null ? idx + 1 : 0,
+                        levelName: levelObj?.name ?? "",
+                    };
+                });
 
                 return (
                     <div className="mb-8">
                         <h2 className="text-base font-bold t-primary mb-4 text-center">Final Result Measurement</h2>
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                            {/* Radar chart */}
+                            {/* Radar chart — 5 levels only */}
                             <div className="lg:col-span-2 card p-5">
-                                <p className="text-xs font-semibold t-secondary text-center mb-3">
-                                    Maturity Model Measurement — All Sub-Dimensions
-                                </p>
-                                <ResponsiveContainer width="100%" height={360}>
-                                    <RadarChart data={radarData} margin={{ top: 10, right: 30, bottom: 10, left: 30 }}>
-                                        <PolarGrid stroke="var(--border-2)" />
-                                        <PolarAngleAxis
-                                            dataKey="subject"
-                                            tick={{ fill: "var(--text-muted)", fontSize: 10, fontFamily: "var(--font-manrope)" }}
-                                        />
-                                        <PolarRadiusAxis
-                                            angle={90}
-                                            domain={[0, 5]}
-                                            tickCount={6}
-                                            tick={{ fill: "var(--text-muted)", fontSize: 9 }}
-                                        />
-                                        <Radar
-                                            name="Final Result"
-                                            dataKey="value"
-                                            stroke="#a78bfa"
-                                            fill="#a78bfa"
-                                            fillOpacity={0.18}
-                                            strokeWidth={2}
-                                        />
-                                    </RadarChart>
-                                </ResponsiveContainer>
+                                <div className="flex items-center justify-between mb-3">
+                                    <div>
+                                        <p className="text-xs font-bold uppercase tracking-wider text-purple-400">
+                                            Spider Chart — 5-Level Sub-Dimensions ({radarSubs.length})
+                                        </p>
+                                        <p className="text-[11px] t-muted">
+                                            Maturity measurement across all 5-level maturity dimensions
+                                        </p>
+                                    </div>
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/25 text-purple-300">
+                                        5-Level Scale
+                                    </span>
+                                </div>
+                                {radarData.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height={360}>
+                                        <RadarChart data={radarData} margin={{ top: 10, right: 30, bottom: 10, left: 30 }}>
+                                            <PolarGrid stroke="var(--border-2)" />
+                                            <PolarAngleAxis
+                                                dataKey="subject"
+                                                tick={{ fill: "var(--text-muted)", fontSize: 10, fontFamily: "var(--font-manrope)" }}
+                                            />
+                                            <PolarRadiusAxis
+                                                angle={90}
+                                                domain={[0, 5]}
+                                                tickCount={6}
+                                                tick={{ fill: "var(--text-muted)", fontSize: 9 }}
+                                            />
+                                            <Radar
+                                                name="Final Result"
+                                                dataKey="value"
+                                                stroke="#a78bfa"
+                                                fill="#a78bfa"
+                                                fillOpacity={0.18}
+                                                strokeWidth={2}
+                                            />
+                                        </RadarChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                    <div className="flex h-[360px] items-center justify-center text-xs t-muted">
+                                        No 5-level sub-dimensions found
+                                    </div>
+                                )}
                             </div>
 
-                            {/* Bar chart — single dimension, dropdown selector */}
-                            <div className="card p-4 flex flex-col gap-3">
-                                {/* Dropdown */}
-                                <select
-                                    value={selectedDimIdx}
-                                    onChange={e => setSelectedDimIdx(Number(e.target.value))}
-                                    className="w-full px-3 py-2 rounded-lg text-xs font-semibold focus:outline-none transition-all"
-                                    style={{
-                                        backgroundColor: "var(--bg-4)",
-                                        border: "1px solid var(--border-2)",
-                                        color: "var(--text-primary)",
-                                    }}
-                                >
-                                    {dimensions.map((dim, i) => (
-                                        <option key={dim._id} value={i}>{dim.name}</option>
-                                    ))}
-                                </select>
+                            {/* Bar chart — Technology Sub-Dimensions (4-Level Scale) */}
+                            <div className="card p-5 flex flex-col justify-between">
+                                <div>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <p className="text-xs font-bold uppercase tracking-wider text-cyan-400">
+                                            Technology Sub-Dimensions ({techSubs.length})
+                                        </p>
+                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/25 text-cyan-300">
+                                            4-Level Scale
+                                        </span>
+                                    </div>
+                                    <p className="text-[11px] t-muted mb-3">
+                                        Maturity measurement for Technology dimension (Level 1 - 4)
+                                    </p>
+                                </div>
 
-                                {/* Chart for selected dimension */}
-                                {(() => {
-                                    const dim = dimensions[selectedDimIdx];
-                                    if (!dim) return null;
-                                    const dimSubs = subResults.filter(s => s.dimId === dim._id);
-                                    const dimBarData = dimSubs.map(sub => {
-                                        const idx = sub.finalScore?.finalLevelIndex ?? (sub.hasMajority ? sub.majorityLevelIndex : null);
-                                        return {
-                                            name: sub.subName.length > 14 ? sub.subName.slice(0, 14) + "…" : sub.subName,
-                                            fullName: sub.subName,
-                                            value: idx !== null ? idx + 1 : 0,
-                                        };
-                                    });
-                                    const color = BAR_COLORS[selectedDimIdx % BAR_COLORS.length];
-                                    return (
-                                        <>
-                                            <p className="text-[11px] font-bold t-secondary text-center leading-tight">
-                                                {dim.name} — Dimension Result
-                                            </p>
-                                            <ResponsiveContainer width="100%" height={260}>
-                                                <BarChart data={dimBarData} margin={{ top: 4, right: 8, left: -16, bottom: 40 }}>
-                                                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                                                    <XAxis
-                                                        dataKey="name"
-                                                        tick={{ fill: "var(--text-muted)", fontSize: 9 }}
-                                                        angle={-35}
-                                                        textAnchor="end"
-                                                        interval={0}
-                                                    />
-                                                    <YAxis domain={[0, 5]} tickCount={6} tick={{ fill: "var(--text-muted)", fontSize: 9 }} />
-                                                    <Tooltip
-                                                        formatter={(val, _, props) => [val, props.payload?.fullName ?? ""]}
-                                                        contentStyle={{ backgroundColor: "var(--bg-2)", border: "1px solid var(--border-2)", borderRadius: 8, fontSize: 11 }}
-                                                        itemStyle={{ color }}
-                                                        cursor={{ fill: "rgba(255,255,255,0.04)" }}
-                                                    />
-                                                    <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                                                        {dimBarData.map((_, i) => (
-                                                            <Cell key={i} fill={color} fillOpacity={0.85} />
-                                                        ))}
-                                                    </Bar>
-                                                </BarChart>
-                                            </ResponsiveContainer>
-                                        </>
-                                    );
-                                })()}
+                                {techBarData.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height={290}>
+                                        <BarChart data={techBarData} margin={{ top: 10, right: 12, left: -16, bottom: 40 }}>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                                            <XAxis
+                                                dataKey="name"
+                                                tick={{ fill: "var(--text-muted)", fontSize: 9 }}
+                                                angle={-25}
+                                                textAnchor="end"
+                                                interval={0}
+                                            />
+                                            <YAxis domain={[0, 4]} tickCount={5} tick={{ fill: "var(--text-muted)", fontSize: 9 }} />
+                                            <Tooltip
+                                                formatter={(val, _, props) => [
+                                                    `Level ${val}${props.payload?.levelName ? ` — ${props.payload.levelName}` : ""}`,
+                                                    props.payload?.fullName ?? "Technology Sub-Dimension"
+                                                ]}
+                                                contentStyle={{ backgroundColor: "var(--bg-2)", border: "1px solid var(--border-2)", borderRadius: 8, fontSize: 11 }}
+                                                itemStyle={{ color: "#38bdf8" }}
+                                                cursor={{ fill: "rgba(255,255,255,0.04)" }}
+                                            />
+                                            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                                                {techBarData.map((_, i) => (
+                                                    <Cell key={i} fill={TECH_COLORS[i % TECH_COLORS.length]} fillOpacity={0.85} />
+                                                ))}
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                    <div className="flex h-[290px] items-center justify-center text-xs t-muted text-center p-4">
+                                        No Technology sub-dimensions found in this session
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -520,7 +666,12 @@ export default function SessionResultsPage() {
                             {dimensions.map((dim, dIdx) => {
                                 const dimSubs = subResults.filter(s => s.dimId === dim._id);
                                 const colorClass = DIM_COLORS[dIdx % DIM_COLORS.length];
+                                const dimensionAiResults = dimSubs.map(sub => ({
+                                    sub,
+                                    result: getSavedAiResult(sub, dim.name),
+                                }));
                                 return dimSubs.map((sub, sIdx) => {
+                                    const aiResult = getSavedAiResult(sub, dim.name);
                                     const finalLevelIdx = sub.finalScore?.finalLevelIndex ?? (sub.hasMajority ? sub.majorityLevelIndex : null);
                                     const finalBobot = finalLevelIdx !== null ? finalLevelIdx + 1 : null;
                                     const isAdjusted = sub.finalScore?.source === "adjusted";
@@ -547,21 +698,50 @@ export default function SessionResultsPage() {
                                                 ) : <span className="text-xs t-muted">—</span>}
                                             </td>
                                             {sIdx === 0 && (() => {
-                                                const items = session.dimensionAnalysis?.find(d => d.dimension === dim._id)?.strengthWeaknessItems ?? [];
-                                                return <td rowSpan={dimSubs.length} className="px-3 py-3 align-top" style={{ borderRight: "1px solid var(--border)", verticalAlign: "top" }}>{items.length > 0 ? <ul className="space-y-2">{items.map((item, i) => <li key={i} className="flex items-start gap-1.5"><span className="mt-1.5 w-1 h-1 rounded-full shrink-0 bg-green-400" /><p className="text-xs t-secondary leading-snug">{item}</p></li>)}</ul> : <span className="text-xs t-muted italic">—</span>}</td>;
+                                                const manualItems = session.dimensionAnalysis?.find(d => d.dimension === dim._id)?.strengthWeaknessItems ?? [];
+                                                const aiItems = dimensionAiResults.filter(entry => entry.result?.strength_weakness);
+                                                return <td rowSpan={dimSubs.length} className="px-3 py-3 align-top" style={{ borderRight: "1px solid var(--border)", verticalAlign: "top" }}>{aiItems.length > 0 ? <ul className="space-y-3">{aiItems.map(({ sub: aiSub, result }) => <li key={aiSub.subId}><p className="text-[10px] font-bold text-purple-400 mb-1">{aiSub.subName}</p><p className="text-xs t-secondary leading-snug">{result?.strength_weakness}</p></li>)}</ul> : manualItems.length > 0 ? <ul className="space-y-2">{manualItems.map((item, i) => <li key={i} className="flex items-start gap-1.5"><span className="mt-1.5 w-1 h-1 rounded-full shrink-0 bg-green-400" /><p className="text-xs t-secondary leading-snug">{item}</p></li>)}</ul> : <span className="text-xs t-muted italic">—</span>}</td>;
                                             })()}
                                             {sIdx === 0 && (() => {
-                                                const items = session.dimensionAnalysis?.find(d => d.dimension === dim._id)?.opportunityAnalysisItems ?? [];
-                                                return <td rowSpan={dimSubs.length} className="px-3 py-3 align-top" style={{ borderRight: "1px solid var(--border)", verticalAlign: "top" }}>{items.length > 0 ? <ul className="space-y-2">{items.map((item, i) => <li key={i} className="flex items-start gap-1.5"><span className="mt-1.5 w-1 h-1 rounded-full shrink-0 bg-blue-400" /><p className="text-xs t-secondary leading-snug">{item}</p></li>)}</ul> : <span className="text-xs t-muted italic">—</span>}</td>;
+                                                const manualItems = session.dimensionAnalysis?.find(d => d.dimension === dim._id)?.opportunityAnalysisItems ?? [];
+                                                const aiItems = dimensionAiResults.flatMap(({ sub: aiSub, result }) => (result?.opportunity_analysis ?? []).map(item => ({ sub: aiSub, item })));
+                                                return <td rowSpan={dimSubs.length} className="px-3 py-3 align-top" style={{ borderRight: "1px solid var(--border)", verticalAlign: "top" }}>{aiItems.length > 0 ? <ul className="space-y-2">{aiItems.map(({ sub: aiSub, item }, i) => <li key={`${aiSub.subId}-${i}`} className="flex items-start gap-1.5"><span className="mt-1.5 w-1 h-1 rounded-full shrink-0 bg-blue-400" /><p className="text-xs t-secondary leading-snug"><span className="font-semibold text-purple-400">{aiSub.subName}: </span>{item}</p></li>)}</ul> : manualItems.length > 0 ? <ul className="space-y-2">{manualItems.map((item, i) => <li key={i} className="flex items-start gap-1.5"><span className="mt-1.5 w-1 h-1 rounded-full shrink-0 bg-blue-400" /><p className="text-xs t-secondary leading-snug">{item}</p></li>)}</ul> : <span className="text-xs t-muted italic">—</span>}</td>;
                                             })()}
                                             {(() => {
-                                                const el = session.subdimensionAnalysis?.find(s => s.subdimension === sub.subId)?.expectedLevel ?? null;
-                                                return <td className="px-3 py-3 text-center align-middle" style={{ borderRight: "1px solid var(--border)" }}>{el !== null ? <span className={`text-2xl font-black ${el >= 4 ? "text-green-400" : el === 3 ? "text-blue-400" : el === 2 ? "text-amber-400" : "text-red-400"}`}>{el}</span> : <span className="text-xs t-muted">—</span>}</td>;
+                                                const el = session.subdimensionAnalysis?.find(s => s.subdimension === sub.subId)?.expectedLevel ?? 3;
+                                                return (
+                                                    <td className="px-3 py-3 text-center align-middle" style={{ borderRight: "1px solid var(--border)" }}>
+                                                        <div className="flex items-center justify-center gap-1.5">
+                                                            <select
+                                                                value={el}
+                                                                disabled={savingExpectedSubId === sub.subId}
+                                                                onChange={event => handleExpectedLevelChange(sub, Number(event.target.value))}
+                                                                className={`rounded-lg px-2 py-1 text-sm font-black focus:outline-none ${el >= 4 ? "text-green-400" : el === 3 ? "text-blue-400" : el === 2 ? "text-amber-400" : "text-red-400"}`}
+                                                                style={{ backgroundColor: "var(--bg-4)", border: "1px solid var(--border)" }}
+                                                            >
+                                                                {sub.levels.map((level, levelIndex) => (
+                                                                    <option key={level._id} value={levelIndex + 1}>Level {levelIndex + 1}</option>
+                                                                ))}
+                                                            </select>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setExpectedDetailSubId(sub.subId)}
+                                                                className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-purple-400 hover:bg-purple-500/10"
+                                                                title="View expected level details"
+                                                            >
+                                                                {savingExpectedSubId === sub.subId ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Info className="h-3.5 w-3.5" />}
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                );
                                             })()}
                                             {(() => {
                                                 const apGroups = session.actionPlanGroups ?? [];
                                                 const grp = apGroups.find(g => g.subdimensions.includes(sub.subId));
-                                                if (!grp) return <td className="px-3 py-2 text-center align-middle"><span className="text-xs t-muted italic">—</span></td>;
+                                                if (!grp) {
+                                                    const aiItems = (aiResult?.action_plan ?? []).filter(item => item.trim());
+                                                    return <td className="px-3 py-3 align-top">{aiItems.length > 0 ? <ol className="space-y-1.5 list-none">{aiItems.map((item, i) => <li key={i} className="flex items-start gap-1.5"><span className="shrink-0 text-[10px] font-black text-orange-400 mt-0.5 w-4">{i + 1}.</span><p className="text-xs t-secondary leading-snug">{item}</p></li>)}</ol> : <span className="text-xs t-muted italic">—</span>}</td>;
+                                                }
                                                 const grpSubs = subResults.filter(s => grp.subdimensions.includes(s.subId));
                                                 if (grpSubs[0]?.subId !== sub.subId) return null;
                                                 return (
@@ -684,6 +864,46 @@ export default function SessionResultsPage() {
             )} {/* end results tab */}
 
         </div>
+
+        {expectedDetailSubId && (() => {
+            const sub = subResults.find(item => item.subId === expectedDetailSubId);
+            if (!sub) return null;
+            const expectedLevel = session.subdimensionAnalysis?.find(item => item.subdimension === sub.subId)?.expectedLevel ?? 3;
+            const level = sub.levels[expectedLevel - 1];
+            if (!level) return null;
+
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setExpectedDetailSubId(null)}>
+                    <div className="card w-full max-w-lg p-5 shadow-2xl" onClick={event => event.stopPropagation()}>
+                        <div className="mb-4 flex items-start justify-between gap-4">
+                            <div>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-purple-400">Expected Level · {sub.subName}</p>
+                                <h3 className="mt-1 text-lg font-bold t-primary">Level {expectedLevel}: {level.name}</h3>
+                            </div>
+                            <button type="button" onClick={() => setExpectedDetailSubId(null)} className="btn-secondary !px-2 !py-1.5">
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        <p className="text-sm leading-relaxed t-secondary">{level.detail || "No level description available."}</p>
+
+                        <div className="mt-5">
+                            <p className="mb-2 text-[10px] font-bold uppercase tracking-widest t-muted">Criteria</p>
+                            {level.criteria.length > 0 ? (
+                                <div className="space-y-2">
+                                    {level.criteria.map(criterion => (
+                                        <div key={criterion._id} className="rounded-lg p-3" style={{ backgroundColor: "var(--bg-3)", border: "1px solid var(--border-2)" }}>
+                                            <p className="text-sm font-semibold t-primary">{criterion.name}</p>
+                                            {criterion.detail && <p className="mt-1 text-xs leading-relaxed t-muted">{criterion.detail}</p>}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : <p className="text-xs italic t-muted">No criteria available for this level.</p>}
+                        </div>
+                    </div>
+                </div>
+            );
+        })()}
 
         {/* ─── AI Reasoning Panel (slide-in from right) ────────────── */}
         {showAiPanel && (

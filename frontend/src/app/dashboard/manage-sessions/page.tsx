@@ -197,7 +197,9 @@ function SessionForm({
                                     <p className="text-sm font-medium t-primary truncate">{m.name}</p>
                                     <p className="text-xs t-muted truncate">{m.email}</p>
                                 </div>
-                                <span className="text-xs t-muted capitalize shrink-0">{m.role}</span>
+                                <span className="text-xs font-medium px-2 py-0.5 rounded border border-purple-500/20 bg-purple-500/10 text-purple-300 shrink-0">
+                                    {m.memberRole || m.role}
+                                </span>
                             </label>
                         ))}
                     </div>

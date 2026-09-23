@@ -8,6 +8,8 @@
     "start": "node src/server.js",
     "seed": "node src/seeders/seed.js",
     "seed:force": "node src/seeders/seed.js --force",
+    "seed:admin": "node src/seeders/seed.superadmin.js",
+    "seed:admin:reset": "node src/seeders/seed.superadmin.js --reset",
     "migrate:finalscores": "node src/seeders/migrate_adjustments.js",
     "lint": "eslint src/"
   },

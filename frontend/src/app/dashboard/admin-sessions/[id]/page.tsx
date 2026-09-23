@@ -381,11 +381,12 @@ export default function AdminSessionDetailPage() {
             // Restore new monitoring rows
             const mrd: Record<string, MonRowData> = {};
             for (const row of sess.monitoringRows ?? []) {
-                const grpId = row.actionPlanGroupId ?? "";
+                const grpId = row.actionPlanGroupId ?? (row.subdimension ? `__no_ap_${row.subdimension}` : "");
                 const k = monRowKey(grpId, row.actionPlanItemIdx);
                 mrd[k] = {
                     subdimension: row.subdimension ?? "",
                     timeline: row.timeline ?? [],
+                    timelineStatuses: row.timelineStatuses ?? [],
                     pic: row.pic ?? "",
                     checker: row.checker ?? "",
                     achievementStatus: (row.achievementStatus ?? "") as MonRowData["achievementStatus"],
@@ -599,12 +600,13 @@ export default function AdminSessionDetailPage() {
             const payload = rows.map(r => {
                 const grpId = r.grp._id ?? String(r.grpIdx);
                 const key = monRowKey(grpId, r.itemIdx);
-                const d = monRowData[key] ?? { subdimension: "", timeline: [], pic: "", checker: "", achievementStatus: "" as const, notes: "" };
+                const d = monRowData[key] ?? { subdimension: "", timeline: [], timelineStatuses: [], pic: "", checker: "", achievementStatus: "" as const, notes: "" };
                 return {
                     actionPlanGroupId: r.grp._id ?? null,
                     actionPlanItemIdx: r.itemIdx,
-                    subdimension:      r.subs[0]?.subId ?? null,
+                    subdimension:      d.subdimension || r.sub?.subId || null,
                     timeline:          d.timeline,
+                    timelineStatuses:  d.timelineStatuses ?? [],
                     pic:               d.pic,
                     checker:           d.checker,
                     achievementStatus: d.achievementStatus,
@@ -665,10 +667,13 @@ export default function AdminSessionDetailPage() {
         </div>
     );
 
-    const radarData = subResults.map(sub => {
+    const radarSubs = subResults.filter(sub => (sub.levels?.length ?? 0) === 5);
+    const radarData = radarSubs.map(sub => {
         const idx = sub.adjustment ? sub.adjustment.finalLevelIndex : sub.hasMajority ? sub.majorityLevelIndex : null;
         return { subject: sub.subName, value: idx !== null ? idx + 1 : 0, fullMark: 5 };
     });
+
+    const total4LevelSubs = subResults.filter(s => (s.levels?.length ?? 0) === 4).length;
 
     return (
         <div className="page-container max-w-7xl">
@@ -716,7 +721,14 @@ export default function AdminSessionDetailPage() {
                     subResults={subResults}
                     dimensions={dimensions}
                     monData={monRowData}
-                    onChangeRow={(key, data) => setMonRowData(prev => ({ ...prev, [key]: data }))}
+                    onChangeRow={(key, data) => setMonRowData(prev => ({
+                        ...prev,
+                        [key]: {
+                            subdimension: "", timeline: [], timelineStatuses: [], pic: "", checker: "", achievementStatus: "", notes: "",
+                            ...prev[key],
+                            ...data,
+                        },
+                    }))}
                     subAnalysis={subAnalysis}
                     finalResults={Object.fromEntries(subResults.map(s => {
                         const fi = s.adjustment ? s.adjustment.finalLevelIndex : s.hasMajority ? s.majorityLevelIndex : null;
@@ -731,10 +743,12 @@ export default function AdminSessionDetailPage() {
             {activeTab === "analysis" && <>
 
             {/* Charts */}
-            {radarData.length > 0 && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-                    <div className="lg:col-span-2 card p-5">
-                        <p className="text-xs font-semibold t-secondary text-center mb-3">Maturity Model Measurement — All Sub-Dimensions</p>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+                <div className="lg:col-span-2 card p-5">
+                    <p className="text-xs font-semibold t-secondary text-center mb-3">
+                        Spider Chart — 5-Level Sub-Dimensions ({radarSubs.length})
+                    </p>
+                    {radarData.length > 0 ? (
                         <ResponsiveContainer width="100%" height={300}>
                             <RadarChart data={radarData} margin={{ top: 10, right: 30, bottom: 10, left: 30 }}>
                                 <PolarGrid stroke="var(--border-2)" />
@@ -743,42 +757,77 @@ export default function AdminSessionDetailPage() {
                                 <Radar name="Final Result" dataKey="value" stroke="#a78bfa" fill="#a78bfa" fillOpacity={0.18} strokeWidth={2} />
                             </RadarChart>
                         </ResponsiveContainer>
+                    ) : (
+                        <div className="flex h-[300px] items-center justify-center text-xs t-muted">
+                            No 5-level sub-dimensions found
+                        </div>
+                    )}
+                </div>
+                {/* Bar chart — Technology Sub-Dimensions (4-Level Scale) */}
+                <div className="card p-5 flex flex-col justify-between">
+                    <div>
+                        <div className="flex items-center justify-between mb-1">
+                            <p className="text-xs font-bold uppercase tracking-wider text-cyan-400">
+                                Technology Sub-Dimensions ({total4LevelSubs})
+                            </p>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/25 text-cyan-300">
+                                4-Level Scale
+                            </span>
+                        </div>
+                        <p className="text-[11px] t-muted mb-3">
+                            Maturity measurement for Technology dimension (Level 1 - 4)
+                        </p>
                     </div>
-                    <div className="card p-4 flex flex-col gap-3">
-                        <select value={selectedDimIdx} onChange={e => setSelectedDimIdx(Number(e.target.value))}
-                            className="w-full px-3 py-2 rounded-lg text-xs font-semibold focus:outline-none"
-                            style={{ backgroundColor: "var(--bg-4)", border: "1px solid var(--border-2)", color: "var(--text-primary)" }}>
-                            {dimensions.map((d, i) => <option key={d._id} value={i}>{d.name}</option>)}
-                        </select>
-                        {(() => {
-                            const dim = dimensions[selectedDimIdx];
-                            if (!dim) return null;
-                            const dimSubs = subResults.filter(s => s.dimId === dim._id);
-                            const barData = dimSubs.map(sub => {
-                                const idx = sub.adjustment ? sub.adjustment.finalLevelIndex : sub.hasMajority ? sub.majorityLevelIndex : null;
-                                return { name: sub.subName.slice(0, 14) + (sub.subName.length > 14 ? "…" : ""), value: idx !== null ? idx + 1 : 0 };
-                            });
-                            const color = BAR_COLORS[selectedDimIdx % BAR_COLORS.length];
-                            return (
-                                <>
-                                    <p className="text-[11px] font-bold t-secondary text-center">{dim.name} — Result</p>
-                                    <ResponsiveContainer width="100%" height={220}>
-                                        <BarChart data={barData} margin={{ top: 4, right: 8, left: -16, bottom: 40 }}>
+                    {(() => {
+                        const techSubs = subResults.filter(s => {
+                            const dim = dimensions.find(d => d._id === s.dimId);
+                            return dim?.name.toLowerCase().includes("tech") || (s.levels?.length ?? 0) === 4;
+                        });
+
+                        const barData = techSubs.map(sub => {
+                            const idx = sub.adjustment ? sub.adjustment.finalLevelIndex : sub.hasMajority ? sub.majorityLevelIndex : null;
+                            const levelObj = idx !== null && sub.levels?.[idx] ? sub.levels[idx] : null;
+                            return {
+                                name: sub.subName.length > 16 ? sub.subName.slice(0, 16) + "…" : sub.subName,
+                                fullName: sub.subName,
+                                value: idx !== null ? idx + 1 : 0,
+                                levelName: levelObj?.name ?? "",
+                            };
+                        });
+                        const TECH_COLORS = ["#38bdf8", "#06b6d4", "#2dd4bf", "#60a5fa", "#818cf8"];
+
+                        return (
+                            <>
+                                {barData.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height={240}>
+                                        <BarChart data={barData} margin={{ top: 10, right: 12, left: -16, bottom: 40 }}>
                                             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                                            <XAxis dataKey="name" tick={{ fill: "var(--text-muted)", fontSize: 9 }} angle={-35} textAnchor="end" interval={0} />
-                                            <YAxis domain={[0, 5]} tickCount={6} tick={{ fill: "var(--text-muted)", fontSize: 9 }} />
-                                            <Tooltip contentStyle={{ backgroundColor: "var(--bg-2)", border: "1px solid var(--border-2)", borderRadius: 8, fontSize: 11 }} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+                                            <XAxis dataKey="name" tick={{ fill: "var(--text-muted)", fontSize: 9 }} angle={-25} textAnchor="end" interval={0} />
+                                            <YAxis domain={[0, 4]} tickCount={5} tick={{ fill: "var(--text-muted)", fontSize: 9 }} />
+                                            <Tooltip
+                                                formatter={(val, _, props) => [
+                                                    `Level ${val}${props.payload?.levelName ? ` — ${props.payload.levelName}` : ""}`,
+                                                    props.payload?.fullName ?? "Technology Sub-Dimension"
+                                                ]}
+                                                contentStyle={{ backgroundColor: "var(--bg-2)", border: "1px solid var(--border-2)", borderRadius: 8, fontSize: 11 }}
+                                                itemStyle={{ color: "#38bdf8" }}
+                                                cursor={{ fill: "rgba(255,255,255,0.04)" }}
+                                            />
                                             <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                                                {barData.map((_, i) => <Cell key={i} fill={color} fillOpacity={0.85} />)}
+                                                {barData.map((_, i) => <Cell key={i} fill={TECH_COLORS[i % TECH_COLORS.length]} fillOpacity={0.85} />)}
                                             </Bar>
                                         </BarChart>
                                     </ResponsiveContainer>
-                                </>
-                            );
-                        })()}
-                    </div>
+                                ) : (
+                                    <div className="flex h-[240px] items-center justify-center text-xs t-muted text-center p-4">
+                                        No Technology sub-dimensions found
+                                    </div>
+                                )}
+                            </>
+                        );
+                    })()}
                 </div>
-            )}
+            </div>
 
             {/* Header + AI Generate + Save All */}
             <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">

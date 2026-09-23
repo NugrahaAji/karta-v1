@@ -5,7 +5,7 @@ import {
     Users, Plus, Pencil, Trash2, X, Check,
     AlertTriangle, Loader2, Shield, ShieldOff,
     User, Mail, Lock, Eye, EyeOff, UserCheck, UserX,
-    RefreshCw, Layers, ChevronDown, ChevronUp
+    RefreshCw, Layers, ChevronDown, ChevronUp, Briefcase
 } from "lucide-react";
 import api from "@/lib/api";
 import { CompanyMember, Dimension } from "@/types";
@@ -176,9 +176,11 @@ function DimensionPicker({
 interface MemberFormProps {
     isEdit: boolean;
     allDimensions: Dimension[];
+    availableRoles: string[];
     formName: string; setFormName: (v: string) => void;
     formEmail: string; setFormEmail: (v: string) => void;
     formPassword: string; setFormPassword: (v: string) => void;
+    formMemberRole: string; setFormMemberRole: (v: string) => void;
     formDimensions: string[]; setFormDimensions: (v: string[]) => void;
     formError: string;
     saving: boolean;
@@ -187,8 +189,10 @@ interface MemberFormProps {
 }
 
 function MemberForm({
-    isEdit, allDimensions, formName, setFormName, formEmail, setFormEmail,
-    formPassword, setFormPassword, formDimensions, setFormDimensions,
+    isEdit, allDimensions, availableRoles,
+    formName, setFormName, formEmail, setFormEmail,
+    formPassword, setFormPassword, formMemberRole, setFormMemberRole,
+    formDimensions, setFormDimensions,
     formError, saving, onSubmit, onCancel,
 }: MemberFormProps) {
     return (
@@ -234,12 +238,53 @@ function MemberForm({
                 />
             </div>
 
-            {/* Role badge — always member */}
-            <div className="flex items-center gap-2 px-3 py-2.5 rounded-md border text-sm" style={{ borderColor: "var(--border)", background: "var(--bg-2)" }}>
+            {/* Member Role / Responsible Team Selection */}
+            <div className="space-y-1.5">
+                <label className="text-xs font-semibold uppercase tracking-widest t-muted flex items-center gap-1.5">
+                    <Briefcase className="w-3 h-3" /> Team / Department Role
+                </label>
+                <p className="text-xs t-muted">
+                    Assign which responsible unit or department this team member represents.
+                </p>
+
+                {availableRoles.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                        {availableRoles.map(r => {
+                            const isSelected = formMemberRole === r;
+                            return (
+                                <button
+                                    key={r}
+                                    type="button"
+                                    onClick={() => setFormMemberRole(r)}
+                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                                        isSelected
+                                            ? "bg-purple-600 text-white border-purple-500 shadow-sm ring-1 ring-purple-400"
+                                            : "border-[var(--border)] bg-[var(--bg-2)] hover:border-purple-500/40 t-secondary"
+                                    }`}
+                                >
+                                    {isSelected && <Check className="w-3 h-3 text-white" />}
+                                    {r}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
+
+                <input
+                    type="text"
+                    value={formMemberRole}
+                    onChange={e => setFormMemberRole(e.target.value)}
+                    placeholder={availableRoles.length > 0 ? "Or type custom department role..." : "e.g. Finance, OPS, IT, Process Analyst..."}
+                    className="input w-full text-xs mt-1"
+                />
+            </div>
+
+            {/* System Role note */}
+            <div className="flex items-center gap-2 px-3 py-2 rounded-md border text-xs" style={{ borderColor: "var(--border)", background: "var(--bg-2)" }}>
                 <Shield className="w-3.5 h-3.5 t-muted" />
-                <span className="t-secondary text-xs">Role:</span>
-                <span className="px-2 py-0.5 rounded text-xs font-semibold border bg-gray-500/10 border-gray-500/30 t-secondary">member</span>
-                <span className="text-xs t-muted ml-auto">Fixed — company accounts are always members</span>
+                <span className="t-secondary font-medium">System Access:</span>
+                <span className="px-1.5 py-0.5 rounded text-[11px] font-semibold border bg-gray-500/10 border-gray-500/30 t-secondary">member</span>
+                <span className="text-[11px] t-muted ml-auto">Company accounts are system members</span>
             </div>
 
             {/* Dimensions picker */}
@@ -281,6 +326,7 @@ function MemberForm({
 export default function MembersPage() {
     const [members, setMembers] = useState<CompanyMember[]>([]);
     const [allDimensions, setAllDimensions] = useState<Dimension[]>([]);
+    const [availableRoles, setAvailableRoles] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
     const [showCreate, setShowCreate] = useState(false);
     const [editTarget, setEditTarget] = useState<CompanyMember | null>(null);
@@ -292,6 +338,7 @@ export default function MembersPage() {
     const [formName, setFormName] = useState("");
     const [formEmail, setFormEmail] = useState("");
     const [formPassword, setFormPassword] = useState("");
+    const [formMemberRole, setFormMemberRole] = useState("");
     const [formDimensions, setFormDimensions] = useState<string[]>([]);
     const [formError, setFormError] = useState("");
 
@@ -303,6 +350,7 @@ export default function MembersPage() {
                 api.get("/dimensions"),
             ]);
             setMembers(membersRes.data.members ?? []);
+            setAvailableRoles(membersRes.data.availableRoles ?? []);
             setAllDimensions(dimsRes.data.dimensions ?? []);
         } catch {
             toast.error("Failed to load data");
@@ -315,13 +363,20 @@ export default function MembersPage() {
 
     const resetForm = () => {
         setFormName(""); setFormEmail(""); setFormPassword("");
+        setFormMemberRole("");
         setFormDimensions([]); setFormError("");
     };
 
-    const openCreate = () => { resetForm(); setShowCreate(true); };
+    const openCreate = () => {
+        resetForm();
+        if (availableRoles.length > 0) setFormMemberRole(availableRoles[0]);
+        setShowCreate(true);
+    };
+
     const openEdit = (m: CompanyMember) => {
         setFormName(m.name); setFormEmail(m.email);
         setFormPassword("");
+        setFormMemberRole(m.memberRole || (availableRoles.length > 0 ? availableRoles[0] : ""));
         setFormDimensions(m.allowedDimensions?.map(d => d._id) ?? []);
         setFormError("");
         setEditTarget(m);
@@ -337,6 +392,7 @@ export default function MembersPage() {
                 name: formName.trim(),
                 email: formEmail.trim(),
                 password: formPassword,
+                memberRole: formMemberRole.trim(),
                 allowedDimensions: formDimensions,
             });
             toast.success("Member account created!");
@@ -353,6 +409,7 @@ export default function MembersPage() {
             setSaving(true);
             const payload: Record<string, unknown> = {
                 name: formName.trim(),
+                memberRole: formMemberRole.trim(),
                 allowedDimensions: formDimensions,
             };
             if (formPassword) payload.password = formPassword;
@@ -479,6 +536,11 @@ export default function MembersPage() {
                                             </div>
                                             <div>
                                                 <p className="font-semibold t-primary leading-tight">{m.name}</p>
+                                                {m.memberRole && (
+                                                    <span className="inline-block mt-0.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border bg-purple-500/10 border-purple-500/30 text-purple-300 max-w-[160px] truncate">
+                                                        {m.memberRole}
+                                                    </span>
+                                                )}
                                                 <p className="text-xs t-muted">{m.email}</p>
                                             </div>
                                         </div>
@@ -544,9 +606,11 @@ export default function MembersPage() {
                     <MemberForm
                         isEdit={false}
                         allDimensions={allDimensions}
+                        availableRoles={availableRoles}
                         formName={formName} setFormName={setFormName}
                         formEmail={formEmail} setFormEmail={setFormEmail}
                         formPassword={formPassword} setFormPassword={setFormPassword}
+                        formMemberRole={formMemberRole} setFormMemberRole={setFormMemberRole}
                         formDimensions={formDimensions} setFormDimensions={setFormDimensions}
                         formError={formError}
                         saving={saving}
@@ -562,9 +626,11 @@ export default function MembersPage() {
                     <MemberForm
                         isEdit={true}
                         allDimensions={allDimensions}
+                        availableRoles={availableRoles}
                         formName={formName} setFormName={setFormName}
                         formEmail={formEmail} setFormEmail={setFormEmail}
                         formPassword={formPassword} setFormPassword={setFormPassword}
+                        formMemberRole={formMemberRole} setFormMemberRole={setFormMemberRole}
                         formDimensions={formDimensions} setFormDimensions={setFormDimensions}
                         formError={formError}
                         saving={saving}

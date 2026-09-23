@@ -18,14 +18,13 @@ interface DebugStep {
  * POST /api/analyze
  *
  * Server-side proxy ke Reasoning Engine VPS.
- * Menggunakan strategi CHUNKED (CHUNK_SIZE item per request) untuk menghindari
- * 504 Gateway Timeout dari nginx di server reasoning engine.
+ * Seluruh assessment dikirim dalam satu batch agar engine dapat menganalisis
+ * semua subdimensi secara paralel.
  *
  * Flow:
  *  1. Terima assessments dari frontend
- *  2. Bagi menjadi chunk CHUNK_SIZE item
- *  3. Kirim tiap chunk secara sekuensial (tunggu selesai sebelum chunk berikutnya)
- *  4. Gabungkan semua hasil, kembalikan ke frontend
+ *  2. Kirim seluruh assessment ke batch endpoint
+ *  3. Gabungkan hasil dengan metadata ID input dan kembalikan ke frontend
  *
  * ENV (.env.local):
  *   REASONING_ENGINE_URL       — URL endpoint batch: https://reasoning.putra-portfolio.cloud/api/v1/reasoning/analyze/batch
@@ -36,22 +35,18 @@ interface DebugStep {
  *   AI_PROVIDER_API_KEY        — (opsional) override api key
  */
 
-const CHUNK_SIZE       = 1;         // 1 item per request — minimal load di engine
-const CHUNK_TIMEOUT_MS = 590_000;   // 590 detik per chunk (~10 menit)
-const CHUNK_DELAY_MS   = 3_000;     // 3 detik jeda antar chunk
+const BATCH_TIMEOUT_MS = 590_000;
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
-// ─── Kirim satu chunk ke engine, retry sekali jika gagal ──────────────────────
-async function sendChunk(
+// ─── Kirim seluruh assessment, retry sekali jika gagal ───────────────────────
+async function sendBatch(
     url: string,
     headers: Record<string, string>,
-    chunkAssessments: AiAssessmentItem[],
-    providerConfig: Record<string, string> | null,
-    chunkIdx: number,
-    totalChunks: number,
+    assessments: AiAssessmentItem[],
+    providerConfig: Record<string, unknown> | null,
 ): Promise<unknown[]> {
-    const label = `chunk ${chunkIdx + 1}/${totalChunks} (${chunkAssessments.length} item)`;
+    const label = `batch (${assessments.length} item)`;
 
     // Format sesuai panduan resmi: gunakan key "scores", field "score" dan "target_level"
     // Hapus dimension_id / sub_dimension_id — tidak ada di kontrak API panduan
@@ -59,7 +54,7 @@ async function sendChunk(
     const body: Record<string, unknown> = {
         organization: { name: "HP3M Assessment" },
         ...(providerConfig ? { provider: providerConfig } : {}),
-        scores: chunkAssessments.map(a => {
+        scores: assessments.map(a => {
             const computedExpected = (() => {
                 if (a.expected_level && a.expected_level >= 1 && a.expected_level <= 5) return a.expected_level;
                 if (a.final_result === 0) return 3;
@@ -81,11 +76,13 @@ async function sendChunk(
         headers,
         body:    JSON.stringify(body),
         cache:   "no-store",
-        signal:  AbortSignal.timeout(CHUNK_TIMEOUT_MS),
     };
 
     const tryFetch = async (): Promise<unknown[]> => {
-        const res = await fetch(url, fetchOpts);
+        const res = await fetch(url, {
+            ...fetchOpts,
+            signal: AbortSignal.timeout(BATCH_TIMEOUT_MS),
+        });
         if (!res.ok) {
             const txt = await res.text().catch(() => "");
             throw new Error(`HTTP ${res.status}: ${txt.slice(0, 200)}`);
@@ -142,10 +139,13 @@ export async function POST(request: Request) {
     // ── STEP 2: Cek environment variables ─────────────────────────────────────
     const engineUrl    = process.env.REASONING_ENGINE_URL;
     const engineApiKey = process.env.REASONING_ENGINE_API_KEY;
-    const providerName = process.env.AI_PROVIDER_NAME;
-    const model        = process.env.AI_PROVIDER_MODEL;
-    const endpoint     = process.env.AI_PROVIDER_ENDPOINT;
-    const apiKey       = process.env.AI_PROVIDER_API_KEY;
+    const providerName  = process.env.AI_PROVIDER_NAME;
+    const model         = process.env.AI_PROVIDER_MODEL;
+    const endpoint      = process.env.AI_PROVIDER_ENDPOINT;
+    const apiKey        = process.env.AI_PROVIDER_API_KEY;
+    const temperature   = process.env.AI_PROVIDER_TEMPERATURE
+        ? parseFloat(process.env.AI_PROVIDER_TEMPERATURE)
+        : undefined;
 
     if (!engineUrl) {
         debugSteps.push({ step: "2_env_check", status: "error", detail: "REASONING_ENGINE_URL tidak ditemukan di .env.local" });
@@ -156,7 +156,13 @@ export async function POST(request: Request) {
     // dan server akan pakai model default (Llama-3.3-70B-Instruct)
     const hasProvider = !!(providerName && model && endpoint && apiKey);
     const providerConfig = hasProvider
-        ? { name: providerName!, model: model!, endpoint: endpoint!, api_key: apiKey! }
+        ? {
+            name:        providerName!,
+            model:       model!,
+            endpoint:    endpoint!,
+            api_key:     apiKey!,
+            ...(temperature !== undefined ? { temperature } : {}),
+          }
         : null;
 
     debugSteps.push({
@@ -165,55 +171,35 @@ export async function POST(request: Request) {
         detail: `URL: ${engineUrl} | Provider: ${hasProvider ? `${providerName} / ${model}` : "server default"} | Engine Key: ${engineApiKey ? "✓" : "(tidak ada)"}`,
     });
 
-    // ── STEP 3: Hitung chunks ───────────────────────────────────────────────────
-    const totalChunks = Math.ceil(assessments.length / CHUNK_SIZE);
+    // ── STEP 3: Siapkan satu batch ──────────────────────────────────────────────
     debugSteps.push({
         step: "3_build_payload",
         status: "ok",
-        detail: `Payload siap — ${assessments.length} sub-dimensi → ${totalChunks} chunk × ${CHUNK_SIZE} item | format: scores/score/target_level`,
+        detail: `Payload siap — ${assessments.length} sub-dimensi dalam satu batch | format: scores/score/target_level`,
     });
 
-    // ── STEP 4: Kirim ke engine secara chunked ────────────────────────────────
+    // ── STEP 4: Kirim seluruh data ke engine ──────────────────────────────────
     const reqHeaders: Record<string, string> = { "Content-Type": "application/json" };
     if (engineApiKey) reqHeaders["X-API-Key"] = engineApiKey;
 
-    const allResults: unknown[] = [];
-    let chunkErrorDetail = "";
+    let allResults: unknown[] = [];
+    let batchErrorDetail = "";
 
     try {
-        for (let i = 0; i < assessments.length; i += CHUNK_SIZE) {
-            const chunk    = assessments.slice(i, i + CHUNK_SIZE);
-            const chunkIdx = Math.floor(i / CHUNK_SIZE);
-
-            const chunkResults = await sendChunk(
-                engineUrl,
-                reqHeaders,
-                chunk,
-                providerConfig,
-                chunkIdx,
-                totalChunks,
-            );
-
-            allResults.push(...chunkResults);
-
-            // Jeda antar chunk
-            if (i + CHUNK_SIZE < assessments.length) {
-                await sleep(CHUNK_DELAY_MS);
-            }
-        }
+        allResults = await sendBatch(engineUrl, reqHeaders, assessments, providerConfig);
     } catch (e) {
-        chunkErrorDetail = (e as Error).message;
-        const isTimeout = chunkErrorDetail.includes("504") || chunkErrorDetail.includes("TimeoutError") || chunkErrorDetail.includes("AbortError");
+        batchErrorDetail = (e as Error).message;
+        const isTimeout = batchErrorDetail.includes("504") || batchErrorDetail.includes("TimeoutError") || batchErrorDetail.includes("AbortError");
         debugSteps.push({
             step: "4_fetch_engine",
             status: "error",
-            detail: chunkErrorDetail,
+            detail: batchErrorDetail,
         });
         return NextResponse.json({
             success: false,
             error: isTimeout
-                ? `Reasoning Engine timeout (504). Coba lagi — engine sedang sibuk. Detail: ${chunkErrorDetail}`
-                : `Gagal menghubungi Reasoning Engine: ${chunkErrorDetail}`,
+                ? `Reasoning Engine timeout (504). Coba lagi — engine sedang sibuk. Detail: ${batchErrorDetail}`
+                : `Gagal menghubungi Reasoning Engine: ${batchErrorDetail}`,
             debug: debugSteps,
         }, { status: 502 });
     }
@@ -221,13 +207,18 @@ export async function POST(request: Request) {
     debugSteps.push({
         step: "4_fetch_engine",
         status: "ok",
-        detail: `Semua ${totalChunks} chunk selesai. Total ${allResults.length} hasil diterima.`,
+        detail: `Satu batch selesai. Total ${allResults.length} hasil diterima.`,
     });
 
     // ── STEP 5: Validasi & kembalikan hasil ───────────────────────────────────
     if (allResults.length === 0) {
         debugSteps.push({ step: "5_read_response", status: "error", detail: "Engine mengembalikan array kosong" });
         return NextResponse.json({ success: false, error: "Engine tidak menghasilkan data", debug: debugSteps }, { status: 502 });
+    }
+    if (allResults.length !== assessments.length) {
+        const detail = `Engine hanya mengembalikan ${allResults.length} dari ${assessments.length} hasil`;
+        debugSteps.push({ step: "5_read_response", status: "error", detail });
+        return NextResponse.json({ success: false, error: detail, debug: debugSteps }, { status: 502 });
     }
 
     debugSteps.push({
@@ -236,7 +227,19 @@ export async function POST(request: Request) {
         detail: `${allResults.length} item hasil analisis diterima dari engine`,
     });
 
-    console.log(`[API/analyze] ✅ Selesai — ${allResults.length} item dari ${totalChunks} chunk`);
+    const enrichedResults = allResults.map((result, index) => {
+        const assessment = assessments[index];
+        const analysis = result && typeof result === "object" ? result : {};
+        return {
+            ...analysis,
+            dimension_id:       assessment?.dimension_id,
+            dimension_name:     assessment?.dimension,
+            sub_dimension_id:   assessment?.sub_dimension_id,
+            sub_dimension_name: assessment?.sub_dimension,
+        };
+    });
 
-    return NextResponse.json({ success: true, data: allResults, debug: debugSteps });
+    console.log(`[API/analyze] ✅ Selesai — ${enrichedResults.length} item dalam satu batch`);
+
+    return NextResponse.json({ success: true, data: enrichedResults, debug: debugSteps });
 }

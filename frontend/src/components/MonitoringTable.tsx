@@ -1,15 +1,32 @@
 "use client";
-import { Loader2, Save } from "lucide-react";
-import { MonitoringRow, ActionPlanGroup } from "@/types";
+import { Loader2, Save, Trash2 } from "lucide-react";
+import { MonitoringRow, ActionPlanGroup, MonitoringStatus } from "@/types";
 
 const MONTHS = 6;
-const STATUS_OPTIONS = ["", "Not Started", "Ongoing", "Completed", "Delayed"] as const;
+const STATUS_OPTIONS: MonitoringStatus[] = ["Targeted", "Not Started", "Ongoing", "Completed", "Delayed"];
+const STATUS_CYCLE: (MonitoringStatus | "")[] = ["", ...STATUS_OPTIONS];
+const STATUS_SHORT: Record<MonitoringStatus, string> = {
+  Targeted: "T",
+  "Not Started": "NS",
+  Ongoing: "O",
+  Completed: "C",
+  Delayed: "D",
+};
 const STATUS_COLORS: Record<string, string> = {
+  Targeted: "text-purple-400 bg-purple-400/10 border-purple-400/30",
   Completed: "text-green-400 bg-green-400/10 border-green-400/30",
   Ongoing: "text-blue-400 bg-blue-400/10 border-blue-400/30",
   Delayed: "text-red-400 bg-red-400/10 border-red-400/30",
   "Not Started": "text-amber-400 bg-amber-400/10 border-amber-400/30",
   "": "t-muted",
+};
+const TIMELINE_COLORS: Record<string, { background: string; border: string }> = {
+  Targeted: { background: "rgba(168,85,247,0.65)", border: "rgba(168,85,247,0.8)" },
+  "Not Started": { background: "rgba(245,158,11,0.55)", border: "rgba(245,158,11,0.75)" },
+  Ongoing: { background: "rgba(59,130,246,0.65)", border: "rgba(59,130,246,0.8)" },
+  Completed: { background: "rgba(34,197,94,0.65)", border: "rgba(34,197,94,0.8)" },
+  Delayed: { background: "rgba(239,68,68,0.65)", border: "rgba(239,68,68,0.8)" },
+  "": { background: "rgba(148,163,184,0.45)", border: "rgba(148,163,184,0.65)" },
 };
 
 type MonRowData = Omit<MonitoringRow, "_id" | "actionPlanGroupId" | "actionPlanItemIdx">;
@@ -92,7 +109,7 @@ export function buildMonRows(
           });
         }
       } else {
-        const ph: ActionPlanGroup = { _id: `__no_ap_${sub.subId}`, subdimensions: [sub.subId], items: [], label: "" };
+        const ph: ActionPlanGroup = { _id: `__no_ap_${sub.subId}`, subdimensions: [sub.subId], items: [], label: "", order: 0 };
         byDim[dim._id].push({
           key: monRowKey(ph._id!, 0),
           grp: ph, grpIdx: -1, sub, item: "", itemIdx: 0,
@@ -117,14 +134,15 @@ interface Props {
   subResults: { subId: string; subName: string; dimId: string }[];
   dimensions: { _id: string; name: string }[];
   monData: Record<string, MonRowData>;
-  onChangeRow?: (key: string, patch: Partial<MonRowData>) => void;
+  onChangeRow?: (key: string, data: MonRowData) => void;
+  onDeleteRow?: (key: string) => void;
   subAnalysis: Record<string, { el: string }>;
   finalResults: Record<string, number | null>;
   saving?: boolean;
   onSave?: () => void;
 }
 
-export default function MonitoringTable({ apGroups, subResults, dimensions, monData, onChangeRow, subAnalysis, finalResults, saving, onSave }: Props) {
+export default function MonitoringTable({ apGroups, subResults, dimensions, monData, onChangeRow, onDeleteRow, subAnalysis, finalResults, saving, onSave }: Props) {
   const rows = buildMonRows(apGroups, subResults, dimensions);
   const ro = !onChangeRow;
 
@@ -145,7 +163,7 @@ export default function MonitoringTable({ apGroups, subResults, dimensions, monD
         </div>
       )}
       <div className="card overflow-x-auto">
-        <table className="w-full text-sm border-collapse" style={{ minWidth: "1200px" }}>
+        <table className="w-full text-sm border-collapse" style={{ minWidth: "1260px" }}>
           <thead>
             <tr style={{ backgroundColor: "var(--bg-3)", borderBottom: "1px solid var(--border-2)" }}>
               <th rowSpan={2} className="px-3 py-3 text-center text-xs font-bold t-secondary uppercase w-24" style={{ borderRight: "1px solid var(--border-2)", verticalAlign: "middle" }}>Dimension</th>
@@ -156,8 +174,9 @@ export default function MonitoringTable({ apGroups, subResults, dimensions, monD
               <th colSpan={MONTHS} className="px-3 py-2 text-center text-xs font-bold t-secondary uppercase" style={{ borderRight: "1px solid var(--border-2)", borderBottom: "1px solid var(--border-2)" }}>Timeline (Month)</th>
               <th rowSpan={2} className="px-3 py-3 text-center text-xs font-bold t-secondary uppercase w-28" style={{ borderRight: "1px solid var(--border-2)", verticalAlign: "middle" }}>PIC</th>
               <th rowSpan={2} className="px-3 py-3 text-center text-xs font-bold t-secondary uppercase w-24" style={{ borderRight: "1px solid var(--border-2)", verticalAlign: "middle" }}>Checker</th>
-              <th rowSpan={2} className="px-3 py-3 text-center text-xs font-bold t-secondary uppercase w-28" style={{ borderRight: "1px solid var(--border-2)", verticalAlign: "middle" }}>Status</th>
-              <th rowSpan={2} className="px-3 py-3 text-center text-xs font-bold t-secondary uppercase w-32" style={{ verticalAlign: "middle" }}>Notes</th>
+              <th rowSpan={2} className="px-3 py-3 text-center text-xs font-bold t-secondary uppercase w-32" style={{ borderRight: "1px solid var(--border-2)", verticalAlign: "middle" }}>Monthly Status</th>
+              <th rowSpan={2} className="px-3 py-3 text-center text-xs font-bold t-secondary uppercase w-32" style={{ borderRight: onDeleteRow ? "1px solid var(--border-2)" : undefined, verticalAlign: "middle" }}>Notes</th>
+              {onDeleteRow && <th rowSpan={2} className="px-2 py-3 text-center text-xs font-bold t-secondary uppercase w-16" style={{ verticalAlign: "middle" }}>Delete</th>}
             </tr>
             <tr style={{ backgroundColor: "var(--bg-3)", borderBottom: "2px solid var(--border-2)" }}>
               {Array.from({ length: MONTHS }, (_, i) => (
@@ -175,6 +194,19 @@ export default function MonitoringTable({ apGroups, subResults, dimensions, monD
               const sid = r.sub?.subId;
               const finalBobot = sid ? (finalResults[sid] ?? null) : null;
               const el = sid ? (subAnalysis[sid]?.el ?? "") : "";
+              const monthStatuses = data.timelineStatuses?.length
+                ? data.timelineStatuses
+                : data.timeline.map(month => ({ month, status: data.achievementStatus || "Targeted" as MonitoringStatus }));
+              const updateMonthStatus = (month: number, status: MonitoringStatus | "") => {
+                const remaining = monthStatuses.filter(entry => entry.month !== month);
+                const nextStatuses = status ? [...remaining, { month, status }].sort((a, b) => a.month - b.month) : remaining;
+                upd({
+                  timeline: nextStatuses.map(entry => entry.month),
+                  timelineStatuses: nextStatuses,
+                  achievementStatus: "",
+                });
+              };
+              const usedStatuses = [...new Set(monthStatuses.map(entry => entry.status))];
 
               return (
                 <tr key={`${r.key}_${idx}`} style={{ borderBottom: "1px solid var(--border)", backgroundColor: idx % 2 === 0 ? "var(--bg)" : "var(--bg-2)" }}>
@@ -212,15 +244,18 @@ export default function MonitoringTable({ apGroups, subResults, dimensions, monD
 
                   {/* Timeline */}
                   {r.renderAp && Array.from({ length: MONTHS }, (_, i) => {
-                    const m = i + 1, active = data.timeline.includes(m);
+                    const month = i + 1;
+                    const monthStatus = monthStatuses.find(entry => entry.month === month)?.status ?? "";
+                    const timelineColor = TIMELINE_COLORS[monthStatus] ?? TIMELINE_COLORS[""];
+                    const nextStatus = STATUS_CYCLE[(STATUS_CYCLE.indexOf(monthStatus) + 1) % STATUS_CYCLE.length];
                     return (
                       <td key={i} rowSpan={r.apSpan} className="px-1 py-2 text-center align-middle"
                         style={{ borderRight: i < MONTHS - 1 ? "1px solid var(--border)" : "1px solid var(--border-2)" }}>
                         {ro
-                          ? <div className="mx-auto w-6 h-6 rounded" style={{ backgroundColor: active ? "rgba(251,146,60,0.6)" : "var(--bg-4)" }} />
-                          : <button onClick={() => { const has = data.timeline.includes(m); upd({ timeline: has ? data.timeline.filter(x => x !== m) : [...data.timeline, m] }); }}
-                              className="mx-auto w-6 h-6 rounded transition-all" title={`Month ${m}`}
-                              style={{ backgroundColor: active ? "rgba(251,146,60,0.7)" : "var(--bg-4)", border: active ? "1px solid rgba(251,146,60,0.5)" : "1px solid var(--border)" }} />
+                          ? <div className="mx-auto flex h-7 w-7 items-center justify-center rounded text-[9px] font-black text-white" title={monthStatus || "No status"} style={{ backgroundColor: monthStatus ? timelineColor.background : "var(--bg-4)", border: monthStatus ? `1px solid ${timelineColor.border}` : "1px solid transparent" }}>{monthStatus ? STATUS_SHORT[monthStatus] : ""}</div>
+                          : <button type="button" onClick={() => updateMonthStatus(month, nextStatus)}
+                              className="mx-auto flex h-7 w-7 items-center justify-center rounded text-[9px] font-black text-white transition-all" title={`Month ${month}: ${monthStatus || "No status"}. Click to change.`}
+                              style={{ backgroundColor: monthStatus ? timelineColor.background : "var(--bg-4)", border: monthStatus ? `1px solid ${timelineColor.border}` : "1px solid var(--border)" }}>{monthStatus ? STATUS_SHORT[monthStatus] : "+"}</button>
                         }
                       </td>
                     );
@@ -246,29 +281,33 @@ export default function MonitoringTable({ apGroups, subResults, dimensions, monD
                     </td>
                   )}
 
-                  {/* Status */}
+                  {/* Monthly status summary */}
                   {r.renderAp && (
                     <td rowSpan={r.apSpan} className="px-2 py-2 text-center align-middle" style={{ borderRight: "1px solid var(--border)" }}>
-                      {ro
-                        ? data.achievementStatus
-                          ? <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${STATUS_COLORS[data.achievementStatus]}`}>{data.achievementStatus}</span>
-                          : <span className="text-xs t-muted">—</span>
-                        : <select value={data.achievementStatus}
-                            onChange={e => upd({ achievementStatus: e.target.value as MonRowData["achievementStatus"] })}
-                            className="w-full px-1 py-1 rounded-lg text-[11px] font-medium focus:outline-none"
-                            style={{ backgroundColor: "var(--bg-4)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
-                            {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s || "—"}</option>)}
-                          </select>}
+                      {usedStatuses.length > 0 ? <div className="flex flex-wrap justify-center gap-1">{usedStatuses.map(status => <span key={status} className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${STATUS_COLORS[status]}`}>{status}</span>)}</div> : <span className="text-xs t-muted">—</span>}
                     </td>
                   )}
 
                   {/* Notes */}
                   {r.renderAp && (
-                    <td rowSpan={r.apSpan} className="px-2 py-2 align-middle">
+                    <td rowSpan={r.apSpan} className="px-2 py-2 align-middle" style={{ borderRight: onDeleteRow ? "1px solid var(--border)" : undefined }}>
                       {ro ? <span className="text-xs t-secondary">{data.notes || "—"}</span>
                         : <input type="text" value={data.notes} onChange={e => upd({ notes: e.target.value })} placeholder="Notes..."
                             className="w-full px-2 py-1 rounded-lg text-xs focus:outline-none"
                             style={{ backgroundColor: "var(--bg-4)", border: "1px solid var(--border)", color: "var(--text-primary)" }} />}
+                    </td>
+                  )}
+
+                  {r.renderAp && onDeleteRow && (
+                    <td rowSpan={r.apSpan} className="px-2 py-2 text-center align-middle">
+                      <button
+                        type="button"
+                        onClick={() => onDeleteRow(r.key)}
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
+                        title="Delete monitoring data"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </td>
                   )}
                 </tr>

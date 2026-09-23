@@ -1,11 +1,25 @@
+export interface CompanyProfile {
+  businessIndustry: string;
+  processMiningStart: string;
+  processMiningTeam: string[];
+  processMiningProcesses: string;
+  processMiningTechnology: string;
+  managementReadiness: string;
+  measurementScope: string;
+  additionalInfo: string;
+}
+
 export interface User {
   _id: string;
   name: string;
   email: string;
   role: "superAdmin" | "owner" | "admin" | "member";
+  memberRole?: string;
   accountRole: "superAdmin" | "Company" | "Consultant" | "Researcher" | "PM";
   plan: "free" | "pro" | "enterprise" | "researcher_plan";
   avatar?: string;
+  companyProfile?: CompanyProfile;
+  isOnboarding?: boolean;
   isVerified: boolean;
   lastLogin?: string;
   createdAt: string;
@@ -101,6 +115,7 @@ export interface CompanyMember {
   name: string;
   email: string;
   role: "owner" | "admin" | "member";
+  memberRole?: string;
   accountRole: string;
   isActive: boolean;
   isVerified: boolean;
@@ -167,15 +182,18 @@ export interface MonitoringCell {
   value: string | number | boolean;
 }
 
+export type MonitoringStatus = "Targeted" | "Not Started" | "Ongoing" | "Completed" | "Delayed";
+
 export interface MonitoringRow {
   _id?: string;
   actionPlanGroupId?: string;
   actionPlanItemIdx: number;
   subdimension?: string;
   timeline: number[];
+  timelineStatuses?: { month: number; status: MonitoringStatus }[];
   pic: string;
   checker: string;
-  achievementStatus: "" | "Not Started" | "Ongoing" | "Completed" | "Delayed";
+  achievementStatus: "" | MonitoringStatus; // legacy row-level status
   notes: string;
 }
 

@@ -247,7 +247,7 @@ export default function AiReasoningPanel({ assessments, onClose, sessionId, isLo
         setSaving(true);
         setSaveError("");
         try {
-            await api.patch(`/sessions/admin/${sessionId}/ai-analysis`, {
+            await api.post(`/sessions/ai/${sessionId}/analysis`, {
                 aiAnalysis: items,
             });
             setSaved(true);

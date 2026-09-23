@@ -1,17 +1,13 @@
 /**
  * AI Reasoning Service
- * Memanggil HP3M AI Reasoning Engine secara CHUNKED untuk menghindari
- * 504 Gateway Timeout dari nginx di server reasoning engine.
+ * Memanggil HP3M AI Reasoning Engine melalui batch endpoint.
  *
  * ENV:
  *   AI_REASONING    — base URL engine (boleh dengan /docs, akan di-strip)
  *   REASONING_KEYS  — API key (X-API-Key header)
  *
- * STRATEGI CHUNKED:
- *   Meskipun panduan menyebut "kirim sekaligus", kenyataannya nginx di server
- *   reasoning engine memiliki batas waktu yang menyebabkan 504 jika terlalu
- *   banyak item dikirim bersamaan. Solusi: kirim CHUNK_SIZE item per request,
- *   kumpulkan semua hasil, urutan dijaga sama dengan input.
+ * Seluruh subdimensi dikirim sekaligus agar engine dapat memprosesnya secara
+ * paralel dan mempertahankan urutan hasil sesuai kontrak API.
  */
 
 const REASONING_BASE = (process.env.AI_REASONING ?? "")
@@ -21,10 +17,7 @@ const REASONING_BASE = (process.env.AI_REASONING ?? "")
 const REASONING_KEY = process.env.REASONING_KEYS ?? "";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const CHUNK_SIZE        = 1;       // 1 item per request — minimal load di engine
-const CHUNK_TIMEOUT_MS  = 590_000; // 590 detik timeout per chunk
-const CHUNK_DELAY_MS    = 3_000;   // 3 detik jeda antar chunk
-const MAX_RETRIES       = 1;       // 1x retry jika gagal
+const BATCH_TIMEOUT_MS = 590_000;
 
 // ─── Helper: fetch dengan AbortController timeout ─────────────────────────────
 async function fetchWithTimeout(url, options, timeoutMs) {
@@ -39,8 +32,8 @@ async function fetchWithTimeout(url, options, timeoutMs) {
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-// ─── Kirim satu chunk ke engine, retry sekali jika network error ──────────────
-async function sendChunk(scores, organization, provider, chunkIndex, totalChunks) {
+// ─── Kirim seluruh assessment, retry sekali jika network error ───────────────
+async function sendBatch(scores, organization, provider) {
   const url = `${REASONING_BASE}/api/v1/reasoning/analyze/batch`;
 
   // Format sesuai panduan: field "scores", "score", "target_level"
@@ -60,12 +53,12 @@ async function sendChunk(scores, organization, provider, chunkIndex, totalChunks
     body: JSON.stringify(body),
   };
 
-  const label = `chunk ${chunkIndex + 1}/${totalChunks} (${scores.length} item)`;
+  const label = `batch (${scores.length} item)`;
 
   // Attempt 1
   try {
     console.log(`[AI] Mengirim ${label}...`);
-    const res = await fetchWithTimeout(url, fetchOpts, CHUNK_TIMEOUT_MS);
+    const res = await fetchWithTimeout(url, fetchOpts, BATCH_TIMEOUT_MS);
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
       // 4xx = kesalahan data, jangan retry
@@ -85,7 +78,7 @@ async function sendChunk(scores, organization, provider, chunkIndex, totalChunks
     await sleep(5000);
 
     // Attempt 2
-    const res = await fetchWithTimeout(url, fetchOpts, CHUNK_TIMEOUT_MS);
+    const res = await fetchWithTimeout(url, fetchOpts, BATCH_TIMEOUT_MS);
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
       throw new Error(`AI Reasoning Engine error ${res.status}: ${txt}`);
@@ -99,7 +92,7 @@ async function sendChunk(scores, organization, provider, chunkIndex, totalChunks
 /**
  * batchAnalyze — entry point utama.
  *
- * Memproses assessments secara chunked (CHUNK_SIZE item per request).
+ * Mengirim seluruh assessment dalam satu request batch.
  * Field dikonversi ke format panduan: score, target_level, scores.
  *
  * @param {Array}  assessments      - Array { dimension, sub_dimension, final_result, expected_level, assessment_note, level_definitions }
@@ -121,32 +114,17 @@ export async function batchAnalyze(assessments, organization = null, providerOve
     ...(a.level_definitions  ? { level_definitions:  a.level_definitions  } : {}),
   }));
 
-  const totalChunks = Math.ceil(allScores.length / CHUNK_SIZE);
-  console.log(`[AI] Total ${allScores.length} item → ${totalChunks} chunk(s) × ${CHUNK_SIZE} item`);
+  console.log(`[AI] Mengirim ${allScores.length} item dalam satu batch`);
+  const results = await sendBatch(allScores, organization, providerOverride);
 
-  const results = [];
-
-  for (let i = 0; i < allScores.length; i += CHUNK_SIZE) {
-    const chunkScores = allScores.slice(i, i + CHUNK_SIZE);
-    const chunkIdx    = Math.floor(i / CHUNK_SIZE);
-
-    const chunkResults = await sendChunk(
-      chunkScores,
-      organization,
-      providerOverride,
-      chunkIdx,
-      totalChunks
-    );
-
-    results.push(...chunkResults);
-
-    // Jeda antar chunk agar nginx server tidak kewalahan
-    if (i + CHUNK_SIZE < allScores.length) {
-      await sleep(CHUNK_DELAY_MS);
-    }
+  if (!Array.isArray(results)) {
+    throw new Error("AI Reasoning Engine mengembalikan response non-array.");
+  }
+  if (results.length !== assessments.length) {
+    throw new Error(`AI Reasoning Engine mengembalikan ${results.length} dari ${assessments.length} hasil.`);
   }
 
-  console.log(`[AI] Semua chunk selesai. Total hasil: ${results.length} item`);
+  console.log(`[AI] Batch selesai. Total hasil: ${results.length} item`);
   return results;
 }
 

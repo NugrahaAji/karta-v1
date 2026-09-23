@@ -30,6 +30,18 @@ export const createSession = async (req, res) => {
         return res.status(400).json({ error: "Some assigned members do not belong to your company" });
     }
 
+    const selectedDimensions = dimensions?.length
+      ? await Dimension.find({ _id: { $in: dimensions } }).select("_id subdimensions._id").lean()
+      : await Dimension.find().select("_id subdimensions._id").lean();
+
+    const subdimensionAnalysis = selectedDimensions.flatMap(dimension =>
+      (dimension.subdimensions ?? []).map(subdimension => ({
+        dimension: dimension._id,
+        subdimension: subdimension._id,
+        expectedLevel: 3,
+      }))
+    );
+
     const session = await AssessmentSession.create({
       title: title.trim(),
       description: description?.trim() ?? "",
@@ -39,6 +51,7 @@ export const createSession = async (req, res) => {
       status: status ?? "draft",
       startDate: startDate ? new Date(startDate) : undefined,
       endDate: endDate ? new Date(endDate) : undefined,
+      subdimensionAnalysis,
     });
 
     const populated = await session.populate("assignedTo", "name email role");
@@ -380,6 +393,55 @@ export const saveSessionAnalysis = async (req, res) => {
   }
 };
 
+export const saveAiAnalysisPublic = async (req, res) => {
+  try {
+    const { aiAnalysis } = req.body;
+    if (!Array.isArray(aiAnalysis) || aiAnalysis.length === 0) {
+      return res.status(400).json({ error: "aiAnalysis harus berupa array dan tidak boleh kosong." });
+    }
+    const hasInvalidItem = aiAnalysis.some(item =>
+      !item ||
+      typeof item !== "object" ||
+      Array.isArray(item) ||
+      typeof item.classification !== "string" ||
+      typeof item.strength_weakness !== "string" ||
+      !Array.isArray(item.opportunity_analysis) ||
+      !Array.isArray(item.action_plan)
+    );
+    if (aiAnalysis.length > 100 || hasInvalidItem) {
+      return res.status(400).json({ error: "aiAnalysis berisi data yang tidak valid." });
+    }
+
+    const aiGeneratedAt = new Date();
+    const session = await AssessmentSession.findOneAndUpdate(
+      { _id: req.params.id, aiAnalysisLocked: { $ne: true } },
+      {
+        $set: {
+          aiAnalysis,
+          aiGeneratedAt,
+          aiAnalysisLocked: true,
+        },
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!session) {
+      const exists = await AssessmentSession.exists({ _id: req.params.id });
+      if (!exists) return res.status(404).json({ error: "Session not found" });
+      return res.status(409).json({ error: "AI analysis sudah pernah disimpan." });
+    }
+
+    res.status(201).json({
+      message: "AI analysis berhasil disimpan.",
+      aiGeneratedAt: session.aiGeneratedAt,
+      itemCount: aiAnalysis.length,
+    });
+  } catch (e) {
+    if (e.name === "CastError") return res.status(400).json({ error: "Session ID tidak valid." });
+    res.status(500).json({ error: e.message });
+  }
+};
+
 export const saveAiAnalysis = async (req, res) => {
   try {
     const session = await AssessmentSession.findById(req.params.id);
@@ -480,6 +542,45 @@ export const saveMonitoringData = async (req, res) => {
   }
 };
 
+async function persistMonitoringRows(session, monitoringRows) {
+  const validStatuses = ["Targeted", "Not Started", "Ongoing", "Completed", "Delayed"];
+
+  session.monitoringRows = monitoringRows.map(r => {
+    const statusByMonth = new Map();
+    for (const entry of r.timelineStatuses ?? []) {
+      if (Number.isInteger(entry?.month) && entry.month >= 1 && entry.month <= 6 && validStatuses.includes(entry.status)) {
+        statusByMonth.set(entry.month, entry.status);
+      }
+    }
+
+    // Backward compatibility for clients that still send one row-level status.
+    if (statusByMonth.size === 0 && validStatuses.includes(r.achievementStatus)) {
+      for (const month of r.timeline ?? []) {
+        if (Number.isInteger(month) && month >= 1 && month <= 6) statusByMonth.set(month, r.achievementStatus);
+      }
+    }
+
+    const timelineStatuses = [...statusByMonth.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([month, status]) => ({ month, status }));
+
+    return {
+      actionPlanGroupId: r.actionPlanGroupId || undefined,
+      actionPlanItemIdx: r.actionPlanItemIdx ?? 0,
+      subdimension:      r.subdimension || undefined,
+      timeline:          timelineStatuses.map(entry => entry.month),
+      timelineStatuses,
+      pic:               r.pic?.trim() ?? "",
+      checker:           r.checker?.trim() ?? "",
+      achievementStatus: "",
+      notes:             r.notes?.trim() ?? "",
+    };
+  });
+
+  await session.save();
+  return session.monitoringRows;
+}
+
 export const saveMonitoringRows = async (req, res) => {
   try {
     const session = await AssessmentSession.findById(req.params.id);
@@ -488,19 +589,68 @@ export const saveMonitoringRows = async (req, res) => {
     const { monitoringRows } = req.body;
     if (!Array.isArray(monitoringRows)) return res.status(400).json({ error: "monitoringRows must be an array" });
 
-    session.monitoringRows = monitoringRows.map(r => ({
-      actionPlanGroupId: r.actionPlanGroupId || undefined,
-      actionPlanItemIdx: r.actionPlanItemIdx ?? 0,
-      subdimension:      r.subdimension || undefined,
-      timeline:          (r.timeline ?? []).filter(m => m >= 1 && m <= 12),
-      pic:               r.pic?.trim() ?? "",
-      checker:           r.checker?.trim() ?? "",
-      achievementStatus: r.achievementStatus ?? "",
-      notes:             r.notes?.trim() ?? "",
-    }));
+    const savedRows = await persistMonitoringRows(session, monitoringRows);
+    res.json({ monitoringRows: savedRows });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+};
+
+export const saveExpectedLevelCompany = async (req, res) => {
+  try {
+    const session = await AssessmentSession.findOne({
+      _id: req.params.id,
+      company: req.user._id,
+    });
+    if (!session) return res.status(404).json({ error: "Session not found" });
+
+    const { dimension, subdimension, expectedLevel } = req.body;
+    if (!dimension || !subdimension || !Number.isInteger(expectedLevel)) {
+      return res.status(400).json({ error: "dimension, subdimension, and integer expectedLevel are required" });
+    }
+
+    const dimensionDoc = await Dimension.findOne({
+      _id: dimension,
+      "subdimensions._id": subdimension,
+    }).select("subdimensions.$");
+    const levelCount = dimensionDoc?.subdimensions?.[0]?.levels?.length ?? 0;
+    if (!levelCount || expectedLevel < 1 || expectedLevel > levelCount) {
+      return res.status(400).json({ error: `Expected level must be between 1 and ${levelCount || 1}` });
+    }
+
+    const sessionUsesDimension = !session.dimensions?.length ||
+      session.dimensions.some(id => id.toString() === dimension);
+    if (!sessionUsesDimension) {
+      return res.status(400).json({ error: "Dimension is not included in this session" });
+    }
+
+    const index = session.subdimensionAnalysis.findIndex(
+      item => item.dimension.toString() === dimension && item.subdimension.toString() === subdimension
+    );
+    if (index >= 0) session.subdimensionAnalysis[index].expectedLevel = expectedLevel;
+    else session.subdimensionAnalysis.push({ dimension, subdimension, expectedLevel });
 
     await session.save();
-    res.json({ monitoringRows: session.monitoringRows });
+    res.json({ subdimensionAnalysis: session.subdimensionAnalysis });
+  } catch (e) {
+    if (e.name === "CastError") return res.status(400).json({ error: "Invalid dimension or subdimension ID" });
+    res.status(500).json({ error: e.message });
+  }
+};
+
+export const saveMonitoringRowsCompany = async (req, res) => {
+  try {
+    const session = await AssessmentSession.findOne({
+      _id: req.params.id,
+      company: req.user._id,
+    });
+    if (!session) return res.status(404).json({ error: "Session not found" });
+
+    const { monitoringRows } = req.body;
+    if (!Array.isArray(monitoringRows)) return res.status(400).json({ error: "monitoringRows must be an array" });
+
+    const savedRows = await persistMonitoringRows(session, monitoringRows);
+    res.json({ monitoringRows: savedRows });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -729,5 +879,36 @@ export const generateAiAnalysisCompany = async (req, res) => {
   } catch (e) {
     console.error("[generateAiAnalysisCompany]", e);
     if (!res.headersSent) res.status(500).json({ error: e.message });
+  }
+};
+
+/**
+ * Company: simpan hasil AI analysis (dari frontend setelah generate berhasil).
+ * Hanya bisa dipanggil oleh company pemilik session.
+ * Jika sudah locked (pernah disimpan), return 409.
+ */
+export const saveAiAnalysisCompany = async (req, res) => {
+  try {
+    const session = await AssessmentSession.findOne({
+      _id:     req.params.id,
+      company: req.user._id,
+    });
+    if (!session) return res.status(404).json({ error: "Session not found" });
+
+    if (session.aiAnalysisLocked)
+      return res.status(409).json({ error: "AI analysis sudah pernah disimpan.", aiGeneratedAt: session.aiGeneratedAt });
+
+    const { aiAnalysis } = req.body;
+    if (!Array.isArray(aiAnalysis) || aiAnalysis.length === 0)
+      return res.status(400).json({ error: "aiAnalysis harus berupa array dan tidak boleh kosong." });
+
+    session.aiAnalysis       = aiAnalysis;
+    session.aiGeneratedAt    = new Date();
+    session.aiAnalysisLocked = true;
+    await session.save();
+
+    res.json({ message: "AI analysis berhasil disimpan.", aiGeneratedAt: session.aiGeneratedAt, itemCount: aiAnalysis.length });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 };

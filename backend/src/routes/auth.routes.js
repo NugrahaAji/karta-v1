@@ -85,7 +85,7 @@ router.get(
   "/google/callback",   
   passport.authenticate("google", {
     session: false,
-    failureRedirect: `${process.env.CLIENT_URL || "http://localhost:3000"}/auth/login?error=google_auth_failed`,
+    failureRedirect: `${process.env.FRONTEND_URL || process.env.CLIENT_URL || "http://localhost:3000"}/auth/login?error=google_auth_failed`,
   }),
   (req, res) => {
     // Generate JWT token for the authenticated user
@@ -94,7 +94,7 @@ router.get(
     });
 
     // Redirect to frontend with token
-    const clientUrl = process.env.CLIENT_URL || "http://localhost:3000";
+    const clientUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || "http://localhost:3000";
     res.redirect(`${clientUrl}/auth/callback?token=${token}`);
   }
 );

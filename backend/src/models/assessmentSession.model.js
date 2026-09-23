@@ -50,15 +50,21 @@ const monitoringCellSchema = new mongoose.Schema({
   value:        { type: mongoose.Schema.Types.Mixed, default: "" },
 });
 
+const timelineStatusSchema = new mongoose.Schema({
+  month:  { type: Number, min: 1, max: 6, required: true },
+  status: { type: String, enum: ["Targeted", "Not Started", "Ongoing", "Completed", "Delayed"], required: true },
+}, { _id: false });
+
 // SuperAdmin: Action-plan-based monitoring (one row per action plan step)
 const monitoringRowSchema = new mongoose.Schema({
   actionPlanGroupId:  { type: mongoose.Schema.Types.ObjectId }, // ref to apGroups element
   actionPlanItemIdx:  { type: Number, default: 0 },             // which step (0-based)
   subdimension:       { type: mongoose.Schema.Types.ObjectId },  // which sub this step targets
-  timeline:           [{ type: Number }],                        // active months (1–6)
+  timeline:           [{ type: Number }],                        // legacy active months (1–6)
+  timelineStatuses:   [timelineStatusSchema],                    // independent status per month
   pic:                { type: String, default: "" },
   checker:            { type: String, default: "" },
-  achievementStatus:  { type: String, enum: ["", "Not Started", "Ongoing", "Completed", "Delayed"], default: "" },
+  achievementStatus:  { type: String, enum: ["", "Targeted", "Not Started", "Ongoing", "Completed", "Delayed"], default: "" },
   notes:              { type: String, default: "" },
 });
 

@@ -25,6 +25,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { clsx } from "clsx";
 import Logo from "@/components/Logo";
+import CompanyOnboardingPanel from "@/components/CompanyOnboardingPanel";
 
 const userNavItems = [
     { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
@@ -225,6 +226,8 @@ export default function DashboardLayout({
             >
                 {children}
             </main>
+
+            {isCompany && user.isOnboarding === false && <CompanyOnboardingPanel />}
         </div>
     );
 }
