@@ -3,17 +3,6 @@
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "installCommand": "npm install",
-  "framework": "nextjs",
-  "env": {
-    "NEXT_PUBLIC_API_URL": "@next_public_api_url",
-    "NEXT_PUBLIC_APP_NAME": "@next_public_app_name",
-    "NEXT_PUBLIC_APP_URL": "@next_public_app_url",
-    "REASONING_ENGINE_URL": "@reasoning_engine_url",
-    "REASONING_ENGINE_API_KEY": "@reasoning_engine_api_key",
-    "AI_PROVIDER_NAME": "@ai_provider_name",
-    "AI_PROVIDER_MODEL": "@ai_provider_model",
-    "AI_PROVIDER_ENDPOINT": "@ai_provider_endpoint",
-    "AI_PROVIDER_API_KEY": "@ai_provider_api_key",
-    "AI_PROVIDER_TEMPERATURE": "@ai_provider_temperature"
-  }
+  "framework": "nextjs"
 }
+
