@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import type { AiAssessmentItem } from "@/types";
 
-// maxDuration: 600 detik (self-hosted / Next.js Enterprise).
-// Jika deploy di Vercel Hobby/Pro, turunkan ke 300.
-export const maxDuration = 600;
+// maxDuration: 300 detik — batas maksimum Vercel Hobby & Pro.
+// Upgrade ke Enterprise untuk meningkatkan ke 900 detik.
+export const maxDuration = 300;
 export const dynamic     = "force-dynamic";
 
 
@@ -35,7 +35,8 @@ interface DebugStep {
  *   AI_PROVIDER_API_KEY        — (opsional) override api key
  */
 
-const BATCH_TIMEOUT_MS = 590_000;
+// 290 detik — 10 detik buffer sebelum Vercel hard-kill di 300 detik
+const BATCH_TIMEOUT_MS = 290_000;
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
