@@ -65,7 +65,7 @@ export function AnnouncementModal() {
                 >
                     {/* Accent banner */}
                     <div
-                        className="px-6 py-2 flex items-center gap-3 bg-white"
+                        className="px-6 py-2 flex items-center gap-3 bg-[var(--bg)]"
                     >
                         <div className="p-1.5 bg-white/20 rounded-md">
                             <Megaphone className="w-4 h-4 text-black" />
