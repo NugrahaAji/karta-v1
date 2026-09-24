@@ -11,6 +11,7 @@ export function Navbar() {
     const [scrolled, setScrolled] = useState(false);
     const pathname = usePathname();
     const isLandingPage = pathname === "/";
+    const isDocsPage = pathname === "/docs";
 
     useEffect(() => {
         const handleScroll = () => {
@@ -26,35 +27,40 @@ export function Navbar() {
         return null;
     }
 
+    // On the docs page the navbar is always a static full-width bar — no float/shrink
+    const effectiveScrolled = isDocsPage ? false : scrolled;
+
     return (
         <div
             className="fixed top-0 left-0 right-0 z-50 flex justify-center transition-all duration-500 ease-out"
-            style={{ padding: scrolled ? "12px 24px 0" : "0" }}
+            style={{ padding: effectiveScrolled ? "12px 24px 0" : "0" }}
         >
             <div
                 className="w-full transition-all duration-500 ease-out"
                 style={{
-                    maxWidth: scrolled ? "1280px" : "100%",
-                    borderRadius: scrolled ? "14px" : "0",
-                    background: scrolled
+                    maxWidth: effectiveScrolled ? "1280px" : "100%",
+                    borderRadius: effectiveScrolled ? "14px" : "0",
+                    background: effectiveScrolled
                         ? "color-mix(in srgb, var(--bg-2) 85%, transparent)"
-                        : "transparent",
-                    borderTop:    scrolled ? "1px solid var(--border)" : "1px solid transparent",
-                    borderLeft:   scrolled ? "1px solid var(--border)" : "1px solid transparent",
-                    borderRight:  scrolled ? "1px solid var(--border)" : "1px solid transparent",
-                    borderBottom: scrolled
+                        : isDocsPage
+                            ? "color-mix(in srgb, var(--bg) 95%, transparent)"
+                            : "transparent",
+                    borderTop:    effectiveScrolled ? "1px solid var(--border)" : "1px solid transparent",
+                    borderLeft:   effectiveScrolled ? "1px solid var(--border)" : "1px solid transparent",
+                    borderRight:  effectiveScrolled ? "1px solid var(--border)" : "1px solid transparent",
+                    borderBottom: effectiveScrolled
                         ? "1px solid var(--border)"
                         : isLandingPage
                             ? "1px solid transparent"
                             : "1px solid var(--border)",
-                    backdropFilter: scrolled ? "blur(16px)" : "blur(0px)",
-                    WebkitBackdropFilter: scrolled ? "blur(16px)" : "blur(0px)",
+                    backdropFilter: effectiveScrolled || isDocsPage ? "blur(12px)" : "blur(0px)",
+                    WebkitBackdropFilter: effectiveScrolled || isDocsPage ? "blur(12px)" : "blur(0px)",
                 }}
             >
                 <nav className="max-w-7xl mx-auto px-5 sm:px-6">
                     <div
                         className="flex justify-between items-center transition-all duration-500 ease-out"
-                        style={{ height: scrolled ? "52px" : "64px" }}
+                        style={{ height: effectiveScrolled ? "52px" : "64px" }}
                     >
                         {/* Left: Logo + Links */}
                         <div className="flex items-center gap-10">
@@ -86,6 +92,7 @@ export function Navbar() {
                                     href="/pricing"
                                     className="text-sm font-semibold px-2 py-1.5 transition-all rounded-md"
                                     style={{ color: "var(--text-primary)" }}
+                                    disabled={true}
                                 >
                                     Pricing
                                 </Link>

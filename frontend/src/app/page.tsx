@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { BarChart2, Shield, Terminal } from "lucide-react";
 import { Footer } from "@/components/Footer";
+import { AnimatedGridPattern } from "@/components/ui/animated-grid-pattern";
 
 export default function Home() {
     return (
@@ -16,12 +17,20 @@ export default function Home() {
                     className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden flex flex-col items-center min-h-[90vh] justify-center"
                     style={{ borderBottom: "1px solid var(--border)" }}
                 >
-                    {/* Radial gradient background — follows theme */}
+                    {/* Animated grid pattern background */}
+                    <AnimatedGridPattern
+                        numSquares={35}
+                        maxOpacity={0.06}
+                        duration={3}
+                        repeatDelay={1}
+                        className="[mask-image:radial-gradient(ellipse_80%_70%_at_50%_50%,black_30%,transparent_100%)]"
+                        style={{ color: "var(--accent-from)" }}
+                    />
+                    {/* Bottom fade so grid dissolves into next section */}
                     <div
-                        className="absolute inset-0 z-0"
+                        className="absolute inset-x-0 bottom-0 h-48 z-[1] pointer-events-none"
                         style={{
-                            backgroundImage: `radial-gradient(circle at bottom, var(--bg) 35%, var(--accent-from) 45%, var(--accent-to) 55%, var(--bg) 75%)`,
-                            filter: `blur(35px)`
+                            background: "linear-gradient(to bottom, transparent, var(--bg))",
                         }}
                     />
 
@@ -53,7 +62,7 @@ export default function Home() {
                             className="text-xl mb-10 max-w-2xl mx-auto leading-snug font-sans"
                             style={{ color: "var(--text-secondary)" }}
                         >
-                            Karta is an open enterprise process mining platform. Discover bottlenecks, measure maturity, and drive continuous improvement seamlessly.
+                            process mining maturity measurement platform, explain your organization, measure maturity and drive continuous improvement seamlessly
                         </p>
 
                         <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
@@ -64,7 +73,7 @@ export default function Home() {
                                 Start your project
                             </Link>
                             <Link
-                                href="#features"
+                                href="/docs"
                                 className="flex items-center px-6 py-3 text-sm font-semibold rounded-md backdrop-blur-sm transition-all"
                                 style={{
                                     backgroundColor: "var(--bg-3)",
