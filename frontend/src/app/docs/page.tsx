@@ -423,6 +423,23 @@ export default function DocsPage() {
                             `Click <strong style="color:var(--text-primary)">"Create Session"</strong> → A notification will be sent to the selected assessors`,
                         ]} />
                         <Callout type="warning">Assessors can only fill in their assessment once: their account is created ✅, dimensions are assigned ✅, and they are added to an active session ✅</Callout>
+
+                        {/* Handoff CTA → Assessor Step 1 */}
+                        <div className="mt-6 flex items-stretch gap-3 p-4 rounded-xl" style={{ background: "color-mix(in srgb, #22c55e 6%, var(--bg-2))", border: "1px solid color-mix(in srgb, #22c55e 25%, transparent)" }}>
+                            <div className="flex flex-col justify-center flex-1">
+                                <p className="text-xs font-bold mb-0.5" style={{ color: "#22c55e" }}>✅ Session created — assessors can now begin</p>
+                                <p className="text-xs" style={{ color: "var(--text-muted)" }}>Share login credentials with your assessors and ask them to follow the Assessor Guide.</p>
+                            </div>
+                            <button
+                                onClick={() => scrollTo("assessor-login")}
+                                className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all hover:brightness-110"
+                                style={{ background: "color-mix(in srgb, #22c55e 15%, transparent)", color: "#22c55e", border: "1px solid color-mix(in srgb, #22c55e 30%, transparent)" }}
+                            >
+                                <ClipboardList className="w-3.5 h-3.5" />
+                                Assessor Guide: Step 1
+                                <ArrowRight className="w-3 h-3" />
+                            </button>
+                        </div>
                     </section>
 
                     <Divider />
@@ -556,6 +573,23 @@ export default function DocsPage() {
                         <Callout type="warning">
                             Base your answers on the <strong>current actual state</strong>, not the ideal state. The submission deadline is set by the Company.
                         </Callout>
+
+                        {/* Handoff CTA → Company Step 5 */}
+                        <div className="mt-6 flex items-stretch gap-3 p-4 rounded-xl" style={{ background: "color-mix(in srgb, var(--accent-from) 6%, var(--bg-2))", border: "1px solid color-mix(in srgb, var(--accent-from) 25%, transparent)" }}>
+                            <div className="flex flex-col justify-center flex-1">
+                                <p className="text-xs font-bold mb-0.5" style={{ color: "var(--accent-from)" }}>✅ Assessment submitted — you're done!</p>
+                                <p className="text-xs" style={{ color: "var(--text-muted)" }}>The Company will now monitor results, run AI analysis, and track action plans.</p>
+                            </div>
+                            <button
+                                onClick={() => scrollTo("company-results")}
+                                className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all hover:brightness-110"
+                                style={{ background: "var(--accent-muted)", color: "var(--accent-from)", border: "1px solid var(--accent-muted-border)" }}
+                            >
+                                <BarChart2 className="w-3.5 h-3.5" />
+                                Company Guide: Step 5
+                                <ArrowRight className="w-3 h-3" />
+                            </button>
+                        </div>
                     </section>
 
                     <Divider />

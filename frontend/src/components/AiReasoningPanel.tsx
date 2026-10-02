@@ -19,7 +19,7 @@ export interface AssessmentPayloadItem {
     assessment_note?: string;
 }
 
-/** Sesuai schema PDF: flat array per sub-dimensi */
+/** Schema per sub-dimension — flat array */
 interface AiResultItem {
     sub_dimension_id:   string;
     sub_dimension_name: string;
@@ -41,11 +41,11 @@ interface AiResultItem {
 interface Props {
     assessments: AssessmentPayloadItem[];
     onClose:     () => void;
-    /** MongoDB session ID untuk menyimpan hasil ke DB */
+    /** MongoDB session ID for saving results to DB */
     sessionId:   string;
-    /** Jika true → tombol generate disembunyikan (sudah pernah dilakukan) */
+    /** If true → generate button is hidden (already done once) */
     isLocked:    boolean;
-    /** Callback setelah hasil berhasil disimpan ke DB */
+    /** Callback after results are successfully saved to DB */
     onSaved?:    (items: AiResultItem[]) => void;
 }
 
@@ -141,7 +141,7 @@ function ResultCard({ item, idx }: { item: AiResultItem; idx: number }) {
                     {/* Strength & Weakness */}
                     {item.strength_weakness && (
                         <div className="p-3 rounded-lg" style={{ backgroundColor: "var(--bg-3)", border: "1px solid var(--border-2)" }}>
-                            <p className="text-[10px] font-bold uppercase tracking-widest t-muted mb-1.5">Analisis</p>
+                            <p className="text-[10px] font-bold uppercase tracking-widest t-muted mb-1.5">Analysis</p>
                             <p className="text-xs t-secondary leading-relaxed">{item.strength_weakness}</p>
                         </div>
                     )}
@@ -149,7 +149,7 @@ function ResultCard({ item, idx }: { item: AiResultItem; idx: number }) {
                     {/* Opportunity Analysis */}
                     {item.opportunity_analysis?.length > 0 && (
                         <div>
-                            <p className="text-[10px] font-bold uppercase tracking-widest t-muted mb-2">Peluang Perbaikan</p>
+                            <p className="text-[10px] font-bold uppercase tracking-widest t-muted mb-2">Improvement Opportunities</p>
                             <ul className="space-y-1.5">
                                 {item.opportunity_analysis.map((opp, i) => (
                                     <li key={i} className="flex items-start gap-2 text-xs t-secondary">
@@ -193,7 +193,7 @@ export default function AiReasoningPanel({ assessments, onClose, sessionId, isLo
     const [debugSteps, setDebugSteps] = useState<DebugStep[]>([]);
     const [debugRaw,   setDebugRaw]   = useState<string>("");
 
-    // Sudah locked dari DB ATAU baru saja disimpan di sesi ini
+    // Locked from DB OR just saved in this session
     const isFullyLocked = isLocked || saved;
 
     // ── Generate AI ───────────────────────────────────────────────────────────
@@ -219,7 +219,7 @@ export default function AiReasoningPanel({ assessments, onClose, sessionId, isLo
             if (data.raw_response)                 setDebugRaw(data.raw_response);
 
             if (!data.success) {
-                setError(data.error ?? "Analisis gagal");
+                setError(data.error ?? "Analysis failed");
                 setHasRun(true);
                 return;
             }
@@ -234,7 +234,7 @@ export default function AiReasoningPanel({ assessments, onClose, sessionId, isLo
                 await handleSave(items);
             }
         } catch (e) {
-            setError("Terjadi kesalahan jaringan (fetch ke /api/analyze gagal). Pastikan Next.js server berjalan.");
+            setError("Network error (fetch to /api/analyze failed). Make sure the Next.js server is running.");
             setDebugSteps([{ step: "client_fetch", status: "error", detail: String(e) }]);
             console.error("AI Reasoning client error:", e);
         } finally {
@@ -254,7 +254,7 @@ export default function AiReasoningPanel({ assessments, onClose, sessionId, isLo
             onSaved?.(items);
         } catch (e: unknown) {
             const msg = (e as { response?: { data?: { error?: string } } })
-                ?.response?.data?.error ?? "Gagal menyimpan ke database.";
+                ?.response?.data?.error ?? "Failed to save to database.";
             setSaveError(msg);
             console.error("AI save error:", e);
         } finally {
@@ -282,11 +282,11 @@ export default function AiReasoningPanel({ assessments, onClose, sessionId, isLo
                                 AI Reasoning
                                 {isFullyLocked && (
                                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-500/10 border border-green-500/20 text-green-400">
-                                        <Lock className="w-2.5 h-2.5" /> Tersimpan
+                                        <Lock className="w-2.5 h-2.5" /> Saved
                                     </span>
                                 )}
                             </h3>
-                            <p className="text-[10px] t-muted">Analisis gap &amp; rekomendasi tindakan</p>
+                            <p className="text-[10px] t-muted">Gap analysis &amp; action recommendations</p>
                         </div>
                     </div>
                     <button onClick={onClose} className="btn-secondary !px-2 !py-1.5">
@@ -299,12 +299,12 @@ export default function AiReasoningPanel({ assessments, onClose, sessionId, isLo
                     {isFullyLocked ? (
                         <p className="text-[11px] leading-relaxed flex items-start gap-1.5" style={{ color: "var(--text-secondary)" }}>
                             <Lock className="w-3 h-3 mt-0.5 text-green-400 shrink-0" />
-                            Hasil AI telah disimpan secara permanen ke database dan tidak dapat di-generate ulang.
+                            AI results have been permanently saved to the database and cannot be regenerated.
                         </p>
                     ) : (
                         <p className="text-[11px] t-secondary leading-relaxed">
-                            Menganalisis <strong className="t-primary">{assessments.length}</strong> sub-dimensi.
-                            Hasil akan disimpan permanen ke database — <strong className="text-amber-400">hanya bisa dilakukan satu kali</strong>.
+                            Analyzing <strong className="t-primary">{assessments.length}</strong> sub-dimensions.
+                            Results will be permanently saved to the database — <strong className="text-amber-400">this can only be done once</strong>.
                         </p>
                     )}
                 </div>
@@ -318,10 +318,10 @@ export default function AiReasoningPanel({ assessments, onClose, sessionId, isLo
                                 <Sparkles className="w-8 h-8 text-purple-400" />
                             </div>
                             <div>
-                                <p className="font-semibold t-primary mb-1">Siap untuk dianalisis</p>
+                                <p className="font-semibold t-primary mb-1">Ready to analyze</p>
                                 <p className="text-xs t-muted leading-relaxed max-w-xs">
-                                    Klik tombol di bawah untuk mengirim data ke Reasoning Engine.
-                                    Hasilnya akan langsung disimpan permanen ke database.
+                                    Click the button below to send data to the Reasoning Engine.
+                                    Results will be permanently saved to the database.
                                 </p>
                             </div>
                         </div>
@@ -334,9 +334,9 @@ export default function AiReasoningPanel({ assessments, onClose, sessionId, isLo
                                 <Lock className="w-8 h-8 text-green-400" />
                             </div>
                             <div>
-                                <p className="font-semibold t-primary mb-1">AI Analysis Sudah Tersimpan</p>
+                                <p className="font-semibold t-primary mb-1">AI Analysis Already Saved</p>
                                 <p className="text-xs t-muted leading-relaxed max-w-xs">
-                                    Hasil generate AI untuk sesi ini sudah disimpan di database dan tidak dapat diulang.
+                                    The AI analysis for this session has been saved to the database and cannot be repeated.
                                 </p>
                             </div>
                         </div>
@@ -349,10 +349,10 @@ export default function AiReasoningPanel({ assessments, onClose, sessionId, isLo
                                 <Brain className="w-8 h-8 text-purple-400" />
                             </div>
                             <div>
-                                <p className="font-semibold t-primary mb-1">AI Sedang Berpikir…</p>
+                                <p className="font-semibold t-primary mb-1">AI is thinking…</p>
                                 <p className="text-xs t-muted leading-relaxed max-w-xs">
-                                    Mengirim data ke Reasoning Engine secara bertahap.<br />
-                                    Proses ini membutuhkan <strong className="text-amber-400">1–3 menit</strong> — mohon tunggu.
+                                    Sending data to the Reasoning Engine in batches.<br />
+                                    This process takes <strong className="text-amber-400">1–3 minutes</strong> — please wait.
                                 </p>
                             </div>
                             <Loader2 className="w-5 h-5 text-purple-400 animate-spin" />
@@ -363,13 +363,13 @@ export default function AiReasoningPanel({ assessments, onClose, sessionId, isLo
                     {saving && (
                         <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-500/5 border border-blue-500/20 text-xs text-blue-400">
                             <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-                            Menyimpan hasil ke database…
+                            Saving results to database…
                         </div>
                     )}
                     {saved && !saving && (
                         <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/5 border border-green-500/20 text-xs text-green-400">
                             <Save className="w-3.5 h-3.5 shrink-0" />
-                            Hasil berhasil disimpan ke database secara permanen.
+                            Results successfully saved to database permanently.
                         </div>
                     )}
                     {saveError && (
@@ -385,7 +385,7 @@ export default function AiReasoningPanel({ assessments, onClose, sessionId, isLo
                             <div className="flex items-start gap-3 p-4 rounded-xl bg-red-500/5 border border-red-500/20">
                                 <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
                                 <div>
-                                    <p className="text-sm font-semibold text-red-400 mb-1">Analisis Gagal</p>
+                                    <p className="text-sm font-semibold text-red-400 mb-1">Analysis Failed</p>
                                     <p className="text-xs t-secondary leading-relaxed">{error}</p>
                                 </div>
                             </div>
@@ -431,7 +431,7 @@ export default function AiReasoningPanel({ assessments, onClose, sessionId, isLo
                     {results && results.length > 0 && (
                         <div className="space-y-2">
                             <p className="text-[10px] font-bold uppercase tracking-widest t-muted">
-                                Hasil Analisis ({results.length} sub-dimensi)
+                                Analysis Results ({results.length} sub-dimensions)
                             </p>
                             {results.map((item, i) => (
                                 <ResultCard key={i} item={item} idx={i} />
@@ -457,7 +457,7 @@ export default function AiReasoningPanel({ assessments, onClose, sessionId, isLo
                                 ? <Loader2 className="w-4 h-4 animate-spin" />
                                 : <Zap className="w-4 h-4" />
                             }
-                            {loading ? "Menganalisis…" : "Analisis dengan AI"}
+                            {loading ? "Analyzing…" : "Analyze with AI"}
                         </button>
                     )}
 
@@ -465,7 +465,7 @@ export default function AiReasoningPanel({ assessments, onClose, sessionId, isLo
                     {isFullyLocked && (
                         <div className="flex-1 flex items-center justify-center gap-2 text-xs t-muted">
                             <Lock className="w-3.5 h-3.5 text-green-400" />
-                            Generate AI telah dikunci secara permanen
+                            Generate AI has been permanently locked
                         </div>
                     )}
                 </div>

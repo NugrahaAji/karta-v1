@@ -748,8 +748,13 @@ const apiDocumentation = {
   ],
 };
 
-// GET /api/docs — Return full API documentation as JSON
+// GET /api/docs — redirect ke Swagger UI
 router.get("/", (req, res) => {
+  res.redirect("/api/docs/ui");
+});
+
+// GET /api/docs/json — raw JSON (untuk programmatic use)
+router.get("/json", (req, res) => {
   res.json(apiDocumentation);
 });
 

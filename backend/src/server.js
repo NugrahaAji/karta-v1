@@ -15,6 +15,7 @@ import miningRoutes from "./routes/mining.routes.js";
 import dimensionRoutes from "./routes/dimension.routes.js";
 import pmRoutes from "./routes/pm.routes.js";
 import apiDocsRoutes from "./routes/apiDocs.routes.js";
+import { swaggerMiddleware, swaggerSetup } from "./config/swagger.js";
 import companyRoutes from "./routes/company.routes.js";
 import assessmentSessionRoutes from "./routes/assessmentSession.routes.js";
 
@@ -91,6 +92,7 @@ app.use("/api/pm", pmRoutes);
 app.use("/api/company", companyRoutes);
 app.use("/api/sessions", assessmentSessionRoutes);
 app.use("/api/docs", apiDocsRoutes);
+app.use("/api/docs/ui", swaggerMiddleware, swaggerSetup);
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
 app.get("/health", (req, res) => {

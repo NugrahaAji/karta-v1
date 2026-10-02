@@ -2,15 +2,22 @@ import { NextResponse } from "next/server";
 import type { AiAssessmentItem } from "@/types";
 
 // maxDuration: 300 detik — batas maksimum Vercel Hobby & Pro.
-// Upgrade ke Enterprise untuk meningkatkan ke 900 detik.
 export const maxDuration = 300;
 export const dynamic     = "force-dynamic";
 
+// ─── Config ───────────────────────────────────────────────────────────────────
+// Jumlah request paralel maksimum ke reasoning engine sekaligus.
+// Bynara rate-limit ~3 concurrent — lebih dari itu kena 429.
+const CONCURRENCY = 3;
+
+// Timeout per request ke engine — 25s cukup untuk agnes-2.5-flash (~10s avg).
+// Jauh di bawah nginx 120s sehingga tidak pernah memicu 504.
+const REQUEST_TIMEOUT_MS = 25_000;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface DebugStep {
-    step: string;
-    status: "ok" | "error" | "skip";
+    step:    string;
+    status:  "ok" | "error" | "skip";
     detail?: string;
 }
 
@@ -18,108 +25,109 @@ interface DebugStep {
  * POST /api/analyze
  *
  * Server-side proxy ke Reasoning Engine VPS.
- * Seluruh assessment dikirim dalam satu batch agar engine dapat menganalisis
- * semua subdimensi secara paralel.
+ * Menggunakan endpoint single `/reasoning/analyze` yang dipanggil secara
+ * paralel (maks CONCURRENCY request sekaligus) untuk setiap sub-dimensi.
  *
- * Flow:
- *  1. Terima assessments dari frontend
- *  2. Kirim seluruh assessment ke batch endpoint
- *  3. Gabungkan hasil dengan metadata ID input dan kembalikan ke frontend
+ * Keunggulan vs batch endpoint:
+ *  - Tiap request hanya ~10 detik → tidak pernah timeout (504)
+ *  - Satu item gagal tidak menggugurkan seluruh analisis
+ *  - Lebih mudah di-debug per sub-dimensi
  *
  * ENV (.env.local):
- *   REASONING_ENGINE_URL       — URL endpoint batch: https://reasoning.putra-portfolio.cloud/api/v1/reasoning/analyze/batch
- *   REASONING_ENGINE_API_KEY   — X-API-Key untuk engine
- *   AI_PROVIDER_NAME           — (opsional) override provider name
- *   AI_PROVIDER_MODEL          — (opsional) override model
- *   AI_PROVIDER_ENDPOINT       — (opsional) override endpoint
- *   AI_PROVIDER_API_KEY        — (opsional) override api key
+ *   REASONING_ENGINE_URL     — URL single endpoint: https://.../api/v1/reasoning/analyze
+ *   REASONING_ENGINE_API_KEY — X-API-Key untuk engine
  */
-
-// 290 detik — 10 detik buffer sebelum Vercel hard-kill di 300 detik
-const BATCH_TIMEOUT_MS = 290_000;
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
-// ─── Kirim seluruh assessment, retry sekali jika gagal ───────────────────────
-async function sendBatch(
-    url: string,
-    headers: Record<string, string>,
-    assessments: AiAssessmentItem[],
-    providerConfig: Record<string, unknown> | null,
-): Promise<unknown[]> {
-    const label = `batch (${assessments.length} item)`;
+// ─── Format satu assessment item ke format payload single endpoint ────────────
+function buildPayload(a: AiAssessmentItem, providerConfig: Record<string, unknown> | null) {
+    const computedExpected = (() => {
+        if (a.expected_level && a.expected_level >= 1 && a.expected_level <= 5) return a.expected_level;
+        if (a.final_result === 0) return 3;
+        if (a.final_result >= 5) return 5;
+        return Math.min(a.final_result + 2, 5);
+    })();
 
-    // Format sesuai panduan resmi: gunakan key "scores", field "score" dan "target_level"
-    // Hapus dimension_id / sub_dimension_id — tidak ada di kontrak API panduan
-    // Hapus system_prompt — menyebabkan error "looping content" di engine
-    const body: Record<string, unknown> = {
-        organization: { name: "HP3M Assessment" },
+    return {
         ...(providerConfig ? { provider: providerConfig } : {}),
-        scores: assessments.map(a => {
-            const computedExpected = (() => {
-                if (a.expected_level && a.expected_level >= 1 && a.expected_level <= 5) return a.expected_level;
-                if (a.final_result === 0) return 3;
-                if (a.final_result >= 5) return 5;
-                return Math.min(a.final_result + 2, 5);
-            })();
-            return {
-                dimension:       a.dimension,
-                sub_dimension:   a.sub_dimension,
-                score:           a.final_result,      // sesuai panduan: "score"
-                target_level:    computedExpected,     // sesuai panduan: "target_level"
-                ...(a.assessment_note ? { assessment_note: a.assessment_note } : {}),
-            };
-        }),
+        assessment: {
+            dimension:       a.dimension,
+            sub_dimension:   a.sub_dimension,
+            final_result:    a.final_result,
+            expected_level:  computedExpected,
+            ...(a.assessment_note ? { assessment_note: a.assessment_note } : {}),
+        },
     };
+}
 
-    const fetchOpts: RequestInit = {
-        method:  "POST",
-        headers,
-        body:    JSON.stringify(body),
-        cache:   "no-store",
-    };
+// ─── Kirim satu request ke single /analyze endpoint, retry sekali jika 5xx ───
+async function analyzeOne(
+    url:            string,
+    headers:        Record<string, string>,
+    assessment:     AiAssessmentItem,
+    providerConfig: Record<string, unknown> | null,
+    label:          string,
+): Promise<unknown> {
+    const body = buildPayload(assessment, providerConfig);
 
-    const tryFetch = async (): Promise<unknown[]> => {
+    const tryFetch = async (): Promise<unknown> => {
         const res = await fetch(url, {
-            ...fetchOpts,
-            signal: AbortSignal.timeout(BATCH_TIMEOUT_MS),
+            method:  "POST",
+            headers,
+            body:    JSON.stringify(body),
+            cache:   "no-store",
+            signal:  AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         });
         if (!res.ok) {
             const txt = await res.text().catch(() => "");
-            throw new Error(`HTTP ${res.status}: ${txt.slice(0, 200)}`);
+            throw new Error(`HTTP ${res.status}: ${txt.slice(0, 300)}`);
         }
-        const raw = await res.text();
-        // Strip markdown fences & loop detection tag
-        const cleaned = raw
-            .replace(/^\[ignoring loop detection\]\s*/i, "")
-            .replace(/^```json\s*/i, "")
-            .replace(/^```\s*/i, "")
-            .replace(/\s*```$/i, "")
-            .trim();
-        const parsed = JSON.parse(cleaned);
-        if (!Array.isArray(parsed)) throw new Error("Response bukan array JSON");
-        return parsed;
+        return await res.json();
     };
 
-    // Attempt 1
     try {
-        console.log(`[API/analyze] Mengirim ${label}...`);
+        console.log(`[API/analyze] → ${label}`);
         const result = await tryFetch();
-        console.log(`[API/analyze] ✅ ${label} selesai (${result.length} hasil)`);
+        console.log(`[API/analyze] ✅ ${label}`);
         return result;
     } catch (err1) {
-        const msg1 = (err1 as Error).message;
-        // Jika 4xx error, jangan retry
-        if (msg1.startsWith("HTTP 4")) throw err1;
-        console.warn(`[API/analyze] ⚠️ ${label} gagal: ${msg1} — retry dalam 5 detik...`);
-        await sleep(5000);
-        // Attempt 2
+        const msg = (err1 as Error).message;
+        const is429 = msg.includes("HTTP 500") && msg.includes("429") || msg.includes("HTTP 429");
+        if (msg.startsWith("HTTP 4") && !is429) throw err1; // 4xx non-429: jangan retry
+        const backoff = is429 ? 10_000 : 3_000;            // 429: tunggu 10s, lainnya 3s
+        console.warn(`[API/analyze] ⚠️ ${label} gagal: ${msg} — retry dalam ${backoff / 1000}s...`);
+        await sleep(backoff);
         const result = await tryFetch();
-        console.log(`[API/analyze] ✅ ${label} selesai (retry, ${result.length} hasil)`);
+        console.log(`[API/analyze] ✅ ${label} (retry OK)`);
         return result;
     }
 }
 
+// ─── Jalankan N fungsi async dengan batas concurrency ────────────────────────
+async function withConcurrency<T>(
+    tasks: (() => Promise<T>)[],
+    limit: number,
+): Promise<PromiseSettledResult<T>[]> {
+    const results: PromiseSettledResult<T>[] = new Array(tasks.length);
+    let next = 0;
+
+    const worker = async () => {
+        while (next < tasks.length) {
+            const i = next++;
+            try {
+                results[i] = { status: "fulfilled", value: await tasks[i]() };
+            } catch (e) {
+                results[i] = { status: "rejected", reason: e };
+            }
+        }
+    };
+
+    await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker));
+    return results;
+}
+
+// ─── Handler ──────────────────────────────────────────────────────────────────
 export async function POST(request: Request) {
     const debugSteps: DebugStep[] = [];
 
@@ -133,7 +141,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: false, error: "Data assessments tidak valid atau kosong", debug: debugSteps }, { status: 400 });
         }
         debugSteps.push({ step: "1_parse_body", status: "ok", detail: `${assessments.length} item assessment diterima` });
-    } catch (e) {
+    } catch {
         return NextResponse.json({ success: false, error: "Request body bukan JSON valid", debug: debugSteps }, { status: 400 });
     }
 
@@ -153,79 +161,78 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: "Konfigurasi Reasoning Engine tidak lengkap", debug: debugSteps }, { status: 500 });
     }
 
-    // Provider config bersifat opsional — jika tidak lengkap, tidak dikirim
-    // dan server akan pakai model default (Llama-3.3-70B-Instruct)
     const hasProvider = !!(providerName && model && endpoint && apiKey);
     const providerConfig = hasProvider
         ? {
-            name:        providerName!,
-            model:       model!,
-            endpoint:    endpoint!,
-            api_key:     apiKey!,
+            name:     providerName!,
+            model:    model!,
+            endpoint: endpoint!,
+            api_key:  apiKey!,
             ...(temperature !== undefined ? { temperature } : {}),
           }
         : null;
 
     debugSteps.push({
-        step: "2_env_check",
+        step:   "2_env_check",
         status: "ok",
-        detail: `URL: ${engineUrl} | Provider: ${hasProvider ? `${providerName} / ${model}` : "server default"} | Engine Key: ${engineApiKey ? "✓" : "(tidak ada)"}`,
+        detail: `URL: ${engineUrl} | Provider: ${hasProvider ? `${providerName} / ${model}` : "server default (agnes-2.5-flash)"} | Engine Key: ${engineApiKey ? "✓" : "(tidak ada)"}`,
     });
 
-    // ── STEP 3: Siapkan satu batch ──────────────────────────────────────────────
-    debugSteps.push({
-        step: "3_build_payload",
-        status: "ok",
-        detail: `Payload siap — ${assessments.length} sub-dimensi dalam satu batch | format: scores/score/target_level`,
-    });
-
-    // ── STEP 4: Kirim seluruh data ke engine ──────────────────────────────────
+    // ── STEP 3: Siapkan tasks ──────────────────────────────────────────────────
     const reqHeaders: Record<string, string> = { "Content-Type": "application/json" };
     if (engineApiKey) reqHeaders["X-API-Key"] = engineApiKey;
 
-    let allResults: unknown[] = [];
-    let batchErrorDetail = "";
+    debugSteps.push({
+        step:   "3_build_payload",
+        status: "ok",
+        detail: `${assessments.length} task siap — paralel maks ${CONCURRENCY} request sekaligus | endpoint: single /analyze`,
+    });
 
-    try {
-        allResults = await sendBatch(engineUrl, reqHeaders, assessments, providerConfig);
-    } catch (e) {
-        batchErrorDetail = (e as Error).message;
-        const isTimeout = batchErrorDetail.includes("504") || batchErrorDetail.includes("TimeoutError") || batchErrorDetail.includes("AbortError");
-        debugSteps.push({
-            step: "4_fetch_engine",
-            status: "error",
-            detail: batchErrorDetail,
-        });
+    // ── STEP 4: Jalankan semua request secara paralel ─────────────────────────
+    console.log(`[API/analyze] Menjalankan ${assessments.length} request (paralel maks ${CONCURRENCY})...`);
+
+    const tasks = assessments.map((a, i) => () =>
+        analyzeOne(engineUrl, reqHeaders, a, providerConfig, `[${i + 1}/${assessments.length}] ${a.dimension} / ${a.sub_dimension}`)
+    );
+
+    const settled = await withConcurrency(tasks, CONCURRENCY);
+
+    const failures = settled
+        .map((r, i) => ({ r, i }))
+        .filter(({ r }) => r.status === "rejected");
+
+    if (failures.length > 0) {
+        const firstErr = (failures[0].r as PromiseRejectedResult).reason as Error;
+        const failList = failures.map(({ r, i }) =>
+            `[${i + 1}] ${assessments[i].sub_dimension}: ${(r as PromiseRejectedResult).reason}`
+        ).join("; ");
+        debugSteps.push({ step: "4_fetch_engine", status: "error", detail: `${failures.length} item gagal: ${failList}` });
         return NextResponse.json({
             success: false,
-            error: isTimeout
-                ? `Reasoning Engine timeout (504). Coba lagi — engine sedang sibuk. Detail: ${batchErrorDetail}`
-                : `Gagal menghubungi Reasoning Engine: ${batchErrorDetail}`,
-            debug: debugSteps,
+            error:   `${failures.length} dari ${assessments.length} sub-dimensi gagal dianalisis. Error pertama: ${firstErr.message}`,
+            debug:   debugSteps,
         }, { status: 502 });
     }
 
+    const allResults = settled.map(r => (r as PromiseFulfilledResult<unknown>).value);
+
     debugSteps.push({
-        step: "4_fetch_engine",
+        step:   "4_fetch_engine",
         status: "ok",
-        detail: `Satu batch selesai. Total ${allResults.length} hasil diterima.`,
+        detail: `Semua ${allResults.length} item selesai dianalisis secara paralel`,
     });
 
-    // ── STEP 5: Validasi & kembalikan hasil ───────────────────────────────────
-    if (allResults.length === 0) {
-        debugSteps.push({ step: "5_read_response", status: "error", detail: "Engine mengembalikan array kosong" });
-        return NextResponse.json({ success: false, error: "Engine tidak menghasilkan data", debug: debugSteps }, { status: 502 });
-    }
+    // ── STEP 5: Validasi & kembalikan hasil ────────────────────────────────────
     if (allResults.length !== assessments.length) {
-        const detail = `Engine hanya mengembalikan ${allResults.length} dari ${assessments.length} hasil`;
+        const detail = `Jumlah hasil (${allResults.length}) tidak sesuai input (${assessments.length})`;
         debugSteps.push({ step: "5_read_response", status: "error", detail });
         return NextResponse.json({ success: false, error: detail, debug: debugSteps }, { status: 502 });
     }
 
     debugSteps.push({
-        step: "5_read_response",
+        step:   "5_read_response",
         status: "ok",
-        detail: `${allResults.length} item hasil analisis diterima dari engine`,
+        detail: `${allResults.length} item hasil analisis diterima`,
     });
 
     const enrichedResults = allResults.map((result, index) => {
@@ -240,7 +247,7 @@ export async function POST(request: Request) {
         };
     });
 
-    console.log(`[API/analyze] ✅ Selesai — ${enrichedResults.length} item dalam satu batch`);
+    console.log(`[API/analyze] ✅ Selesai — ${enrichedResults.length} item`);
 
     return NextResponse.json({ success: true, data: enrichedResults, debug: debugSteps });
 }
