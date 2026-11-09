@@ -1,525 +1,222 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
-import { Loader2, Save, Check, Plus, X, Building2, Users2 } from "lucide-react";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { ArrowLeft, ArrowRight, Check, LogOut, Plus } from "lucide-react";
 import type { CompanyProfile } from "@/types";
+import { Alert, Button, CheckboxChoice, ChoiceGroup, SelectField, TextAreaField, TextField } from "@/components/ui";
+import { PRESET_RESPONSIBLE_TEAMS, PRESET_SECTORS, PROFILE_STEPS, TEXT_QUESTIONS, firstIncompleteStep, formatIndustry, normalizeCompanyProfile, parseIndustry, validateCompanyProfile, type ProfileErrors, type ProfileField } from "@/lib/company-profile";
+import styles from "./CompanyProfileForm.module.css";
 
-export const EMPTY_COMPANY_PROFILE: CompanyProfile = {
-  businessIndustry: "",
-  processMiningStart: "",
-  processMiningTeam: [],
-  processMiningProcesses: "",
-  processMiningTechnology: "",
-  managementReadiness: "",
-  measurementScope: "",
-  additionalInfo: "",
-};
-
-export const PRESET_SECTORS: string[] = [
-  "Banking & Financial Services",
-  "Telecommunications",
-  "Healthcare & Pharmaceuticals",
-  "Manufacturing & Automotive",
-  "Retail, Wholesale & E-commerce",
-  "Logistics & Supply Chain",
-  "Energy & Utilities",
-  "Technology, IT & Software",
-  "Public Sector & Government",
-  "Media & Entertainment",
-  "Professional Services & Consulting",
-  "Education & Research",
-];
-
-export const PRESET_RESPONSIBLE_TEAMS: string[] = [
-  "Finance",
-  "Operations (OPS)",
-  "Information Technology (IT)",
-  "Process Excellence / CoE",
-  "Internal Audit & Compliance",
-  "Supply Chain & Procurement",
-  "Human Resources (HR)",
-  "Customer Experience (CX)",
-  "Risk Management",
-  "Data & Analytics",
-  "Digital Transformation Office",
-];
-
-const STANDARD_TEXT_QUESTIONS: Array<{
-  key: keyof CompanyProfile;
-  label: string;
-  question: string;
-  placeholder: string;
-}> = [
-  {
-    key: "processMiningStart",
-    label: "Process Mining Journey",
-    question: "When did the company start using Process Mining?",
-    placeholder: "Describe when the initiative started, its initial objectives, and the progress achieved so far...",
-  },
-  {
-    key: "processMiningProcesses",
-    label: "Business Processes",
-    question: "Which business processes already use Process Mining?",
-    placeholder: "List the processes, departments involved, use cases, challenges, and problems being addressed...",
-  },
-  {
-    key: "processMiningTechnology",
-    label: "Technology",
-    question: "What technology is used or will be used for the Process Mining implementation?",
-    placeholder: "Describe in-house applications, commercial Process Mining packages, integrations, dashboards, or action engines...",
-  },
-  {
-    key: "managementReadiness",
-    label: "Management and Change Readiness",
-    question: "What is the company's awareness and readiness regarding management systems and change management?",
-    placeholder: "Describe certifications, governance, documentation, audits, security practices, and cross-department coordination...",
-  },
-  {
-    key: "measurementScope",
-    label: "Maturity Measurement Scope",
-    question: "What scope has been selected for this Process Mining maturity measurement?",
-    placeholder: "Describe the processes, departments, business units, and boundaries included in the measurement...",
-  },
-  {
-    key: "additionalInfo",
-    label: "Additional Information",
-    question: "Any information do you want to share about your company?",
-    placeholder: "Share any other relevant context, background, challenges, goals, or details that may help with the assessment...",
-  },
-];
+export { EMPTY_COMPANY_PROFILE, PRESET_SECTORS, PRESET_RESPONSIBLE_TEAMS } from "@/lib/company-profile";
 
 interface Props {
-  initialValue?: Partial<CompanyProfile>;
-  submitting?: boolean;
-  submitLabel?: string;
-  onSubmit: (profile: CompanyProfile) => Promise<void> | void;
+    initialValue?: Partial<CompanyProfile>;
+    submitting?: boolean;
+    savingDraft?: boolean;
+    submitLabel?: string;
+    onSubmit: (profile: CompanyProfile) => Promise<void> | void;
+    onboarding?: boolean;
+    exitRequested?: boolean;
+    onRequestExit?: () => void;
+    onCancelExit?: () => void;
+    onSaveDraft?: (profile: CompanyProfile) => Promise<void> | void;
+    error?: string;
 }
 
-export default function CompanyProfileForm({
-  initialValue,
-  submitting = false,
-  submitLabel = "Save Company Profile",
-  onSubmit,
-}: Props) {
-  const [profile, setProfile] = useState<CompanyProfile>({
-    ...EMPTY_COMPANY_PROFILE,
-    ...initialValue,
-  });
+export default function CompanyProfileForm({ initialValue, submitting = false, savingDraft = false, submitLabel = "Save company profile", onSubmit, onboarding = false, exitRequested = false, onRequestExit, onCancelExit, onSaveDraft, error }: Props) {
+    const [profile, setProfile] = useState(() => normalizeCompanyProfile(initialValue));
+    const [industry, setIndustry] = useState(() => parseIndustry(initialValue?.businessIndustry || ""));
+    const [detailsOpen, setDetailsOpen] = useState(() => Boolean(parseIndustry(initialValue?.businessIndustry || "").detail));
+    const [customTeam, setCustomTeam] = useState("");
+    const [step, setStep] = useState(() => onboarding ? firstIncompleteStep(normalizeCompanyProfile(initialValue)) : 0);
+    const [reviewing, setReviewing] = useState(false);
+    const [errors, setErrors] = useState<ProfileErrors>({});
+    const [validationAttempt, setValidationAttempt] = useState(0);
+    const [actionPending, setActionPending] = useState(false);
+    const formRef = useRef<HTMLFormElement>(null);
+    const headingRef = useRef<HTMLHeadingElement>(null);
+    const errorRef = useRef<HTMLDivElement>(null);
+    const requestLock = useRef(false);
+    const prefix = useId();
+    const busy = submitting || savingDraft || actionPending;
+    const fields = PROFILE_STEPS[step].fields;
 
-  // State for Sector ("What sector")
-  const [selectedSector, setSelectedSector] = useState<string>("");
-  const [customSector, setCustomSector] = useState<string>("");
-  const [isCustomSectorMode, setIsCustomSectorMode] = useState<boolean>(false);
-  const [sectorDetail, setSectorDetail] = useState<string>("");
+    useEffect(() => {
+        if (onboarding) headingRef.current?.focus();
+    }, [step, exitRequested, onboarding]);
 
-  // State for Responsible Team ("Who is responsible")
-  const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
-  const [customTeamInput, setCustomTeamInput] = useState<string>("");
+    useEffect(() => {
+        if (error) errorRef.current?.focus();
+    }, [error]);
 
-  // Initialize and parse fields from initialValue
-  useEffect(() => {
-    const nextProfile = { ...EMPTY_COMPANY_PROFILE, ...initialValue };
-    setProfile(nextProfile);
+    useEffect(() => {
+        if (!validationAttempt) return;
+        const invalid = formRef.current?.querySelector<HTMLElement>('[data-invalid="true"]');
+        const control = invalid?.querySelector<HTMLElement>('input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"]') || invalid?.querySelector<HTMLElement>("select, input, textarea");
+        control?.focus();
+        invalid?.scrollIntoView({ block: "nearest" });
+    }, [validationAttempt]);
 
-    // Initialize Sector
-    const rawIndustry = nextProfile.businessIndustry || "";
-    if (rawIndustry) {
-      // Check if it matches a preset or preset with detail
-      const matchedPreset = PRESET_SECTORS.find(
-        preset => rawIndustry === preset || rawIndustry.startsWith(`${preset} — `) || rawIndustry.startsWith(`${preset}: `)
-      );
-
-      if (matchedPreset) {
-        setSelectedSector(matchedPreset);
-        setIsCustomSectorMode(false);
-        const remainder = rawIndustry.replace(new RegExp(`^${matchedPreset}[\\s:—-]+`), "").trim();
-        setSectorDetail(remainder);
-      } else {
-        setSelectedSector("Other");
-        setIsCustomSectorMode(true);
-        setCustomSector(rawIndustry);
-      }
-    } else {
-      setSelectedSector("");
-      setIsCustomSectorMode(false);
-      setCustomSector("");
-      setSectorDetail("");
+    function clearError(key: ProfileField) { setErrors(previous => ({ ...previous, [key]: undefined })); }
+    function updateIndustry(changes: Partial<typeof industry>) {
+        const next = { ...industry, ...changes };
+        setIndustry(next);
+        setProfile(previous => ({ ...previous, businessIndustry: formatIndustry(next.sector, next.custom, next.detail) }));
+        clearError("businessIndustry");
+    }
+    function changeText(key: ProfileField, value: string) {
+        setProfile(previous => ({ ...previous, [key]: value }));
+        clearError(key);
+    }
+    function toggleTeam(team: string, checked: boolean) {
+        setProfile(previous => ({ ...previous, processMiningTeam: checked ? [...previous.processMiningTeam, team] : previous.processMiningTeam.filter(item => item.toLowerCase() !== team.toLowerCase()) }));
+        clearError("processMiningTeam");
+    }
+    function withPendingTeam() {
+        return normalizeCompanyProfile({ ...profile, processMiningTeam: [...profile.processMiningTeam, ...(customTeam.trim() ? [customTeam.trim()] : [])] });
+    }
+    function addTeam() {
+        if (!customTeam.trim()) return;
+        setProfile(withPendingTeam());
+        setCustomTeam("");
+        clearError("processMiningTeam");
+    }
+    function goToStep(index: number) {
+        if (busy) return;
+        setErrors({});
+        setStep(index);
+    }
+    function showErrors(nextErrors: ProfileErrors) {
+        setErrors(nextErrors);
+        if (onboarding) {
+            const invalidStep = PROFILE_STEPS.findIndex(item => item.fields.some(key => nextErrors[key]));
+            if (invalidStep >= 0) setStep(invalidStep);
+        }
+        setValidationAttempt(value => value + 1);
+    }
+    async function save(draft = false) {
+        if (requestLock.current || busy) return;
+        const next = withPendingTeam();
+        const nextErrors = validateCompanyProfile(next, undefined, !draft);
+        if (draft && industry.detail.trim() && !next.businessIndustry) {
+            nextErrors.businessIndustry = "Choose an industry so we can save your company context with it.";
+        }
+        if (Object.keys(nextErrors).length) {
+            onCancelExit?.();
+            showErrors(nextErrors);
+            return;
+        }
+        setProfile(next);
+        setCustomTeam("");
+        requestLock.current = true;
+        setActionPending(true);
+        try {
+            if (draft) await onSaveDraft?.(next);
+            else await onSubmit(next);
+        } finally {
+            requestLock.current = false;
+            setActionPending(false);
+        }
+    }
+    function handleSubmit(event: FormEvent) {
+        event.preventDefault();
+        if (busy || exitRequested) return;
+        const next = withPendingTeam();
+        if (onboarding && step < 3) {
+            const nextErrors = validateCompanyProfile(next, fields);
+            if (Object.keys(nextErrors).length) { showErrors(nextErrors); return; }
+            setProfile(next);
+            setCustomTeam("");
+            setErrors({});
+            setStep(reviewing ? 3 : step + 1);
+            setReviewing(false);
+        } else void save();
     }
 
-    // Initialize Responsible Teams
-    const rawTeams = nextProfile.processMiningTeam;
-    if (Array.isArray(rawTeams) && rawTeams.length > 0) {
-      setSelectedTeams([...new Set(rawTeams.map(t => t.trim()).filter(Boolean))]);
-    } else if (typeof rawTeams === "string" && rawTeams) {
-      // legacy: handle old comma-separated string from DB
-      setSelectedTeams([...new Set((rawTeams as string).split(/[,;\n]+/).map(t => t.trim()).filter(Boolean))]);
-    } else {
-      setSelectedTeams([]);
-    }
-  }, [initialValue]);
+    const allTeams = [...PRESET_RESPONSIBLE_TEAMS, ...profile.processMiningTeam.filter(team => !PRESET_RESPONSIBLE_TEAMS.some(preset => preset.toLowerCase() === team.toLowerCase()))];
+    const selected = new Set(profile.processMiningTeam.map(team => team.toLowerCase()));
+    const hasErrors = Object.values(errors).some(Boolean);
+    const id = (name: string) => `${prefix}-${name}`;
 
-  // Combine and update sector in profile
-  const updateSectorValue = (sector: string, isCustom: boolean, customVal: string, detailVal: string) => {
-    let finalSector = "";
-    if (isCustom || sector === "Other") {
-      finalSector = customVal.trim();
-    } else {
-      finalSector = sector.trim();
-    }
-
-    let finalIndustry = finalSector;
-    if (detailVal.trim() && finalSector) {
-      finalIndustry = `${finalSector} — ${detailVal.trim()}`;
-    } else if (detailVal.trim() && !finalSector) {
-      finalIndustry = detailVal.trim();
-    }
-
-    setProfile(prev => ({ ...prev, businessIndustry: finalIndustry }));
-  };
-
-  const handleSelectSector = (sector: string) => {
-    if (sector === "Other") {
-      setSelectedSector("Other");
-      setIsCustomSectorMode(true);
-      updateSectorValue("Other", true, customSector, sectorDetail);
-    } else {
-      setSelectedSector(sector);
-      setIsCustomSectorMode(false);
-      updateSectorValue(sector, false, "", sectorDetail);
-    }
-  };
-
-  const handleCustomSectorChange = (val: string) => {
-    setCustomSector(val);
-    updateSectorValue("Other", true, val, sectorDetail);
-  };
-
-  const handleSectorDetailChange = (val: string) => {
-    setSectorDetail(val);
-    updateSectorValue(selectedSector, isCustomSectorMode, customSector, val);
-  };
-
-  // Toggle or add responsible teams
-  const toggleTeam = (team: string) => {
-    let updated: string[];
-    if (selectedTeams.includes(team)) {
-      updated = selectedTeams.filter(t => t !== team);
-    } else {
-      updated = [...selectedTeams, team];
-    }
-    setSelectedTeams(updated);
-    setProfile(prev => ({ ...prev, processMiningTeam: updated }));
-  };
-
-  const handleAddCustomTeam = () => {
-    const trimmed = customTeamInput.trim();
-    if (!trimmed) return;
-    if (!selectedTeams.includes(trimmed)) {
-      const updated = [...selectedTeams, trimmed];
-      setSelectedTeams(updated);
-      setProfile(prev => ({ ...prev, processMiningTeam: updated }));
-    }
-    setCustomTeamInput("");
-  };
-
-  const handleRemoveTeam = (team: string) => {
-    const updated = selectedTeams.filter(t => t !== team);
-    setSelectedTeams(updated);
-    setProfile(prev => ({ ...prev, processMiningTeam: updated }));
-  };
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    await onSubmit(profile);
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* ─── QUESTION 1: WHAT SECTOR (Choice-able) ─── */}
-      <div
-        className="rounded-xl p-5 sm:p-6 transition-all"
-        style={{ backgroundColor: "var(--bg-3)", border: "1px solid var(--border-2)" }}
-      >
-        <div className="mb-3 flex items-start gap-3">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-purple-500/15 text-xs font-black text-purple-400">
-            A
-          </span>
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-purple-400" />
-              <p className="text-xs font-bold uppercase tracking-wider text-purple-400">
-                Industry Sector
-              </p>
+    function companyFields() {
+        return <>
+            <div data-invalid={Boolean(errors.businessIndustry)}>
+                <SelectField id={id("industry")} name="businessIndustry" label="Primary industry" hint="Choose the closest match, or select Other to add your own." required value={industry.sector} error={industry.sector === "Other" ? undefined : errors.businessIndustry} onChange={event => updateIndustry({ sector: event.target.value })}>
+                    <option value="" disabled>Select an industry</option>
+                    {PRESET_SECTORS.map(sector => <option key={sector}>{sector}</option>)}
+                    <option value="Other">Other industry</option>
+                </SelectField>
+                {industry.sector === "Other" && <div className={styles.followUp}><TextField id={id("custom-industry")} label="Your industry" hint="Use a specific sector name." maxLength={3000} placeholder="e.g. Aerospace" required value={industry.custom} error={errors.businessIndustry} onChange={event => updateIndustry({ custom: event.target.value })} /></div>}
             </div>
-            <label className="mt-1 block text-base font-semibold t-primary">
-              What sector or industry does your company operate in?
-            </label>
-            <p className="mt-0.5 text-xs t-muted">
-              Select your primary industry or specify a custom sector.
-            </p>
-          </div>
-        </div>
-
-        {/* Sector Choice Pills */}
-        <div className="mt-3 flex flex-wrap gap-2">
-          {PRESET_SECTORS.map(sector => {
-            const isSelected = selectedSector === sector && !isCustomSectorMode;
-            return (
-              <button
-                key={sector}
-                type="button"
-                onClick={() => handleSelectSector(sector)}
-                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all ${
-                  isSelected
-                    ? "bg-purple-600 text-white shadow-md shadow-purple-600/25 ring-2 ring-purple-400"
-                    : "border hover:border-purple-500/50 hover:bg-purple-500/5 t-secondary"
-                }`}
-                style={
-                  !isSelected
-                    ? { backgroundColor: "var(--bg)", borderColor: "var(--border)" }
-                    : undefined
-                }
-              >
-                {isSelected && <Check className="h-3.5 w-3.5" />}
-                {sector}
-              </button>
-            );
-          })}
-
-          <button
-            type="button"
-            onClick={() => handleSelectSector("Other")}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all ${
-              isCustomSectorMode
-                ? "bg-purple-600 text-white shadow-md shadow-purple-600/25 ring-2 ring-purple-400"
-                : "border hover:border-purple-500/50 hover:bg-purple-500/5 t-secondary"
-            }`}
-            style={
-              !isCustomSectorMode
-                ? { backgroundColor: "var(--bg)", borderColor: "var(--border)" }
-                : undefined
-            }
-          >
-            {isCustomSectorMode && <Check className="h-3.5 w-3.5" />}
-            Other / Custom
-          </button>
-        </div>
-
-        {/* Custom Sector Input if "Other" is selected */}
-        {isCustomSectorMode && (
-          <div className="mt-3">
-            <label className="mb-1 block text-xs font-medium t-muted">Specify Sector Name</label>
-            <input
-              type="text"
-              required
-              value={customSector}
-              onChange={e => handleCustomSectorChange(e.target.value)}
-              placeholder="e.g. Aerospace, Renewable Energy, FinTech..."
-              className="w-full rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500/50"
-              style={{
-                backgroundColor: "var(--bg)",
-                border: "1px solid var(--border)",
-                color: "var(--text-primary)",
-              }}
-            />
-          </div>
-        )}
-
-        {/* Optional details on what company does */}
-        <div className="mt-3 pt-3" style={{ borderTop: "1px dashed var(--border-2)" }}>
-          <label className="mb-1 block text-xs font-medium t-muted">
-            Company Activities & Overview (Optional detail)
-          </label>
-          <textarea
-            rows={2}
-            value={sectorDetail}
-            onChange={e => handleSectorDetailChange(e.target.value)}
-            placeholder="Briefly describe what your company does, core products, or market position..."
-            className="w-full resize-y rounded-lg px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-purple-500/50"
-            style={{
-              backgroundColor: "var(--bg)",
-              border: "1px solid var(--border)",
-              color: "var(--text-primary)",
-            }}
-          />
-        </div>
-
-        {/* Hidden validator input if required */}
-        <input
-          type="text"
-          className="sr-only"
-          tabIndex={-1}
-          required
-          value={profile.businessIndustry}
-          onChange={() => {}}
-        />
-      </div>
-
-      {/* ─── QUESTION 2: WHO IS RESPONSIBLE (Choice-able & Multi-Select) ─── */}
-      <div
-        className="rounded-xl p-5 sm:p-6 transition-all"
-        style={{ backgroundColor: "var(--bg-3)", border: "1px solid var(--border-2)" }}
-      >
-        <div className="mb-3 flex items-start gap-3">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-purple-500/15 text-xs font-black text-purple-400">
-            B
-          </span>
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <Users2 className="h-4 w-4 text-purple-400" />
-              <p className="text-xs font-bold uppercase tracking-wider text-purple-400">
-                Responsible Team & Roles
-              </p>
+            <details className={styles.optionalDetails} open={detailsOpen} onToggle={event => setDetailsOpen(event.currentTarget.open)}>
+                <summary>Add company context (optional)</summary>
+                <TextAreaField id={id("industry-detail")} label="What does your company do?" hint="A brief description of your products, services, or customers." rows={2} maxLength={2500} value={industry.detail} onChange={event => updateIndustry({ detail: event.target.value })} placeholder="We manufacture components for the automotive industry…" />
+            </details>
+            <div data-invalid={Boolean(errors.processMiningTeam)}>
+                <ChoiceGroup label="Responsible teams" hint="Select all that apply. These become role choices when you add team members later." error={errors.processMiningTeam}>
+                    {allTeams.map(team => <CheckboxChoice key={team} name="responsible-teams" value={team} label={team} checked={selected.has(team.toLowerCase())} onChange={event => toggleTeam(team, event.target.checked)} />)}
+                </ChoiceGroup>
+                <div className={styles.customTeam}>
+                    <TextField id={id("custom-team")} label="Another team (optional)" hint="Enter a department name and select Add team." value={customTeam} maxLength={120} placeholder="e.g. Process improvement office" onChange={event => setCustomTeam(event.target.value)} onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); addTeam(); } }} />
+                    <Button variant="secondary" disabled={busy || !customTeam.trim()} onClick={addTeam} leadingIcon={<Plus aria-hidden="true" />}>Add team</Button>
+                </div>
+                <p className={styles.selectionCount} role="status">{profile.processMiningTeam.length ? `${profile.processMiningTeam.length} ${profile.processMiningTeam.length === 1 ? "team" : "teams"} selected` : "No teams selected yet"}</p>
             </div>
-            <label className="mt-1 block text-base font-semibold t-primary">
-              Who is responsible for Process Mining in your company?
-            </label>
-            <p className="mt-0.5 text-xs t-muted">
-              Select one or more departments/units. These teams will directly populate the available roles when you create team member accounts.
-            </p>
-          </div>
-        </div>
+        </>;
+    }
+    function textFields(stepIndex: number) {
+        return TEXT_QUESTIONS.filter(question => PROFILE_STEPS[stepIndex].fields.includes(question.key)).map(question => <div key={question.key} data-invalid={Boolean(errors[question.key])}>
+            <TextAreaField id={id(question.key)} name={question.key} label={question.label} hint={question.hint} placeholder={question.placeholder} maxLength={question.maxLength} required={!question.optional} value={profile[question.key]} error={errors[question.key]} onChange={event => changeText(question.key, event.target.value)} />
+        </div>);
+    }
 
-        {/* Active Selected Badges */}
-        {selectedTeams.length > 0 && (
-          <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg p-2.5" style={{ backgroundColor: "var(--bg-2)", border: "1px solid var(--border)" }}>
-            <span className="text-xs font-semibold t-muted mr-1">Selected roles:</span>
-            {selectedTeams.map(team => (
-              <span
-                key={team}
-                className="inline-flex items-center gap-1.5 rounded-full border border-purple-500/40 bg-purple-500/15 px-2.5 py-1 text-xs font-semibold text-purple-300 shadow-sm"
-              >
-                <Check className="h-3 w-3 text-purple-400" />
-                {team}
-                <button
-                  type="button"
-                  onClick={() => handleRemoveTeam(team)}
-                  className="rounded-full p-0.5 hover:bg-purple-500/30 text-purple-300 transition-colors"
-                  title={`Remove ${team}`}
-                >
-                  <X className="h-3 w-3" />
+    return <form ref={formRef} onSubmit={handleSubmit} noValidate aria-busy={busy} className={`${styles.form} ${onboarding ? styles.wizard : ""}`}>
+        {onboarding && !exitRequested && <nav className={styles.progress} aria-label="Company setup progress">
+            <ol>{PROFILE_STEPS.map((item, index) => <li key={item.label}>
+                <button type="button" onClick={() => { if (step === 3) setReviewing(true); goToStep(index); }} disabled={busy || index > step} aria-current={step === index ? "step" : undefined} className={styles.step}>
+                    <span className={styles.stepNumber}>{index < step ? <Check aria-hidden="true" /> : index + 1}</span><span>{item.label}</span>
                 </button>
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Choice Chips for Popular Responsible Teams */}
-        <div className="mt-2 flex flex-wrap gap-2">
-          {PRESET_RESPONSIBLE_TEAMS.map(team => {
-            const isSelected = selectedTeams.includes(team);
-            return (
-              <button
-                key={team}
-                type="button"
-                onClick={() => toggleTeam(team)}
-                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all ${
-                  isSelected
-                    ? "bg-purple-600 text-white shadow-md shadow-purple-600/25 ring-2 ring-purple-400"
-                    : "border hover:border-purple-500/50 hover:bg-purple-500/5 t-secondary"
-                }`}
-                style={
-                  !isSelected
-                    ? { backgroundColor: "var(--bg)", borderColor: "var(--border)" }
-                    : undefined
-                }
-              >
-                {isSelected ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5 opacity-60" />}
-                {team}
-              </button>
-            );
-          })}
+            </li>)}</ol>
+        </nav>}
+        <div className={styles.body} data-lenis-prevent>
+            {error && <div ref={errorRef} tabIndex={-1} className={styles.requestError}><Alert variant="error">{error}</Alert></div>}
+            {exitRequested ? <section className={styles.exitPrompt}>
+                <LogOut aria-hidden="true" />
+                <h2 tabIndex={-1} ref={headingRef}>Finish setup later?</h2>
+                <p>Save your answers to your account and sign out. Next time you sign in, you’ll return to the first unfinished step.</p>
+                <p className={styles.supporting}>Your workspace will be available once you finish setup.</p>
+            </section> : <>
+                {onboarding && <header className={styles.stepHeading}>
+                    <p className={styles.eyebrow}>Step {step + 1} of {PROFILE_STEPS.length}</p>
+                    <h2 ref={headingRef} tabIndex={-1}>{PROFILE_STEPS[step].title}</h2>
+                    <p>{PROFILE_STEPS[step].description}</p>
+                </header>}
+                {hasErrors && <p className={styles.validationSummary} role="alert">Check the highlighted answers to continue.</p>}
+                {onboarding && step === 3 ? <div className={styles.review}>
+                    {PROFILE_STEPS.slice(0, 3).map((group, index) => <section key={group.label}>
+                        <div className={styles.reviewHeading}><h3>{group.label}</h3><button type="button" className={styles.textLink} disabled={busy} aria-label={`Edit ${group.label.toLowerCase()} answers`} onClick={() => { setReviewing(true); goToStep(index); }}>Edit</button></div>
+                        <dl>{group.fields.map(key => <div key={key}><dt>{key === "businessIndustry" ? "Industry" : key === "processMiningTeam" ? "Responsible teams" : TEXT_QUESTIONS.find(item => item.key === key)?.label}</dt><dd>{key === "processMiningTeam" ? profile.processMiningTeam.join(", ") : profile[key] || "Not provided"}</dd></div>)}</dl>
+                    </section>)}
+                </div> : <fieldset className={styles.fields} disabled={busy}>
+                    {(onboarding ? [step] : [0, 1, 2]).map(index => <section className={styles.section} key={index}>
+                        {!onboarding && <h3>{PROFILE_STEPS[index].label}</h3>}
+                        {index === 0 ? companyFields() : textFields(index)}
+                    </section>)}
+                </fieldset>}
+            </>}
         </div>
-
-        {/* Add Custom Responsible Team / Department */}
-        <div className="mt-3 flex items-center gap-2">
-          <input
-            type="text"
-            value={customTeamInput}
-            onChange={e => setCustomTeamInput(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleAddCustomTeam();
-              }
-            }}
-            placeholder="Add another department/unit (e.g., PMO, Logistics, Risk)..."
-            className="flex-1 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-purple-500/50"
-            style={{
-              backgroundColor: "var(--bg)",
-              border: "1px solid var(--border)",
-              color: "var(--text-primary)",
-            }}
-          />
-          <button
-            type="button"
-            onClick={handleAddCustomTeam}
-            disabled={!customTeamInput.trim()}
-            className="btn-secondary !px-3 !py-2 text-xs gap-1.5 disabled:opacity-40 shrink-0"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Add Team
-          </button>
-        </div>
-
-        {/* Hidden validator input if required */}
-        <input
-          type="text"
-          className="sr-only"
-          tabIndex={-1}
-          required
-          value={profile.processMiningTeam.join(", ")}
-          onChange={() => {}}
-        />
-        {selectedTeams.length === 0 && (
-          <p className="mt-2 text-xs text-amber-400/80 flex items-center gap-1">
-            * Please select at least one responsible team or add a custom department.
-          </p>
-        )}
-      </div>
-
-      {/* ─── REMAINING STANDARD QUESTIONS ─── */}
-      {STANDARD_TEXT_QUESTIONS.map(({ key, label, question, placeholder }, index) => (
-        <div
-          key={key}
-          className="rounded-xl p-5 sm:p-6 transition-all"
-          style={{ backgroundColor: "var(--bg-3)", border: "1px solid var(--border-2)" }}
-        >
-          <div className="mb-2 flex items-start gap-3">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-purple-500/15 text-xs font-black text-purple-400">
-              {String.fromCharCode(67 + index)}
-            </span>
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-purple-400">{label}</p>
-              <label htmlFor={`company-profile-${key}`} className="mt-1 block text-base font-semibold t-primary">
-                {question}
-              </label>
-            </div>
-          </div>
-          <textarea
-            id={`company-profile-${key}`}
-            required
-            rows={4}
-            maxLength={5000}
-            value={profile[key]}
-            onChange={event => setProfile(previous => ({ ...previous, [key]: event.target.value }))}
-            placeholder={placeholder}
-            className="mt-2 w-full resize-y rounded-lg px-3 py-2.5 text-sm leading-relaxed focus:outline-none focus:ring-1 focus:ring-purple-500/50"
-            style={{
-              backgroundColor: "var(--bg)",
-              border: "1px solid var(--border)",
-              color: "var(--text-primary)",
-            }}
-          />
-        </div>
-      ))}
-
-      <div className="flex justify-end pt-2">
-        <button type="submit" disabled={submitting} className="btn-primary min-w-48 gap-2">
-          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          {submitting ? "Saving..." : submitLabel}
-        </button>
-      </div>
-    </form>
-  );
+        <footer className={styles.footer}>
+            {exitRequested ? <>
+                <Button variant="secondary" disabled={busy} onClick={onCancelExit}>Continue setup</Button>
+                <Button disabled={busy} loading={savingDraft} onClick={() => void save(true)} trailingIcon={<LogOut aria-hidden="true" />}>{savingDraft ? "Saving progress…" : "Save & sign out"}</Button>
+            </> : <>
+                {onboarding && <button type="button" className={styles.saveLater} disabled={busy} onClick={onRequestExit}>Save & sign out</button>}
+                <div className={styles.navigation}>
+                    {onboarding && step > 0 && <Button variant="secondary" disabled={busy} onClick={() => { setReviewing(false); goToStep(step - 1); }} leadingIcon={<ArrowLeft aria-hidden="true" />}>Back</Button>}
+                    <Button type="submit" disabled={busy} loading={submitting} trailingIcon={<ArrowRight aria-hidden="true" />}>{submitting ? "Saving company profile…" : onboarding ? step === 3 ? "Finish setup" : reviewing ? "Return to review" : "Continue" : submitLabel}</Button>
+                </div>
+                {onboarding && <p className={styles.footerHint}>Answers are saved when you finish setup or choose Save & sign out.</p>}
+            </>}
+        </footer>
+    </form>;
 }

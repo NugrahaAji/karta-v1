@@ -1,276 +1,101 @@
 "use client";
 
-import { useState, useRef, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import toast from "react-hot-toast";
+import { ArrowRight, Check } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import Logo from "@/components/Logo";
+import { AuthShell } from "@/components/auth/AuthShell";
+import { Alert, ButtonLink } from "@/components/ui";
+import { AuthField, AuthLoading, CodeInput, FormError, FormHeading, PrimaryButton, authError } from "@/components/auth/AuthControls";
+import styles from "@/components/auth/auth.module.css";
 
 function ResetPasswordForm() {
-    const router = useRouter();
     const searchParams = useSearchParams();
     const { resetPassword, forgotPassword } = useAuth();
-
     const [email, setEmail] = useState(searchParams.get("email") || "");
-    const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
-    const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
-    const [newPassword, setNewPassword] = useState("");
-    const [confirmPassword, setConfirmPassword] = useState("");
+    const [code, setCode] = useState("");
+    const [password, setPassword] = useState("");
+    const [confirmation, setConfirmation] = useState("");
     const [loading, setLoading] = useState(false);
+    const [resending, setResending] = useState(false);
     const [success, setSuccess] = useState(false);
-    const [resendCooldown, setResendCooldown] = useState(0);
+    const [cooldown, setCooldown] = useState(0);
+    const [error, setError] = useState("");
+    const [notice, setNotice] = useState("");
+    const [passwordMismatch, setPasswordMismatch] = useState(false);
 
     useEffect(() => {
-        if (resendCooldown <= 0) return;
-        const timer = setTimeout(() => setResendCooldown((p) => p - 1), 1000);
+        if (cooldown <= 0) return;
+        const timer = setTimeout(() => setCooldown(value => value - 1), 1000);
         return () => clearTimeout(timer);
-    }, [resendCooldown]);
+    }, [cooldown]);
 
-    const handleResendCode = async () => {
-        if (resendCooldown > 0 || !email) return;
+    async function resendCode() {
+        if (cooldown > 0 || resending || loading) return;
+        const emailInput = document.getElementById("reset-email") as HTMLInputElement | null;
+        if (emailInput && !emailInput.reportValidity()) return;
+        if (!email.trim()) return;
+        setResending(true);
+        setError("");
+        setNotice("");
         try {
-            await forgotPassword(email);
-            toast.success("A new reset code has been sent to your email.");
-            setOtpDigits(["", "", "", "", "", ""]);
-            otpRefs.current[0]?.focus();
-            setResendCooldown(60);
-        } catch (err: any) {
-            toast.error(err.response?.data?.error || "Failed to resend code.");
-        }
-    };
+            await forgotPassword(email.trim());
+            setCode("");
+            setCooldown(60);
+            setNotice("If this email is registered, a new reset code is on its way. Check your inbox and spam folder.");
+        } catch (err: unknown) {
+            setError(authError(err, "We could not resend the code. Try again in a moment."));
+        } finally { setResending(false); }
+    }
 
-    const handleOtpChange = (index: number, value: string) => {
-        if (!/^\d*$/.test(value)) return;
-        const newDigits = [...otpDigits];
-        newDigits[index] = value.slice(-1);
-        setOtpDigits(newDigits);
-        if (value && index < 5) {
-            otpRefs.current[index + 1]?.focus();
-        }
-    };
-
-    const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
-        if (e.key === "Backspace" && !otpDigits[index] && index > 0) {
-            otpRefs.current[index - 1]?.focus();
-        }
-    };
-
-    const handleOtpPaste = (e: React.ClipboardEvent) => {
-        e.preventDefault();
-        const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-        const newDigits = [...otpDigits];
-        for (let i = 0; i < 6; i++) {
-            newDigits[i] = pasted[i] || "";
-        }
-        setOtpDigits(newDigits);
-        const focusIdx = Math.min(pasted.length, 5);
-        otpRefs.current[focusIdx]?.focus();
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const code = otpDigits.join("");
-        if (code.length !== 6) {
-            toast.error("Please enter the 6-digit code.");
+    async function handleSubmit(event: React.FormEvent) {
+        event.preventDefault();
+        if (loading || resending) return;
+        setError("");
+        setNotice("");
+        if (password !== confirmation) {
+            setPasswordMismatch(true);
+            setError("Your passwords don’t match. Enter the same password in both fields.");
+            document.getElementById("confirm-password")?.focus();
             return;
         }
-        if (newPassword !== confirmPassword) {
-            toast.error("Passwords do not match.");
-            return;
-        }
-        if (newPassword.length < 6) {
-            toast.error("Password must be at least 6 characters.");
-            return;
-        }
+        setPasswordMismatch(false);
         setLoading(true);
         try {
-            await resetPassword(email, code, newPassword);
-            toast.success("Password reset successfully!");
+            await resetPassword(email.trim(), code, password);
+            setPassword("");
+            setConfirmation("");
             setSuccess(true);
-        } catch (err: any) {
-            toast.error(err.response?.data?.error || "Reset failed.");
-        } finally {
-            setLoading(false);
-        }
-    };
+        } catch (err: unknown) {
+            setError(authError(err, "We could not reset your password. Check your code or request a new one."));
+        } finally { setLoading(false); }
+    }
 
-    return (
-        <div
-            className="min-h-screen font-sans  flex flex-col pt-16"
-            style={{ backgroundColor: "var(--bg)", color: "var(--text-primary)" }}
-        >
-            <div className="flex-grow flex w-full" style={{ backgroundColor: "var(--bg)" }}>
-                <div className="w-full flex flex-col md:flex-row">
-                    {/* Left Panel */}
-                    <div
-                        className="w-full md:w-5/12 lg:w-1/2 relative p-10 lg:p-20 flex flex-col justify-center overflow-hidden"
-                        style={{ backgroundColor: "var(--bg-2)", borderRight: "1px solid var(--border)" }}
-                    >
-                        <div className="absolute top-0 left-0 w-full h-full opacity-70" style={{ background: "linear-gradient(to bottom right, color-mix(in srgb, var(--accent-from) 20%, transparent), color-mix(in srgb, var(--accent-via) 10%, transparent), color-mix(in srgb, var(--accent-to) 10%, transparent))" }}></div>
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full blur-[100px]" style={{ background: "radial-gradient(circle, color-mix(in srgb, var(--accent-from) 10%, transparent), transparent)" }}></div>
-                        <div className="relative z-10 max-w-md mx-auto w-full">
-                            <div
-                                className="w-12 h-12 rounded-md flex items-center justify-center mb-8"
-                                style={{ backgroundColor: "var(--bg)", border: "1px solid var(--border)" }}
-                            >
-                                <svg className="w-6 h-6 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                </svg>
-                            </div>
-                            <h2 className="text-4xl lg:text-5xl font-extrabold mb-6 leading-tight" style={{ color: "var(--text-primary)" }}>
-                                Reset <br /> Password
-                            </h2>
-                            <p className="max-w-[280px] leading-relaxed text-base" style={{ color: "var(--text-secondary)" }}>
-                                Enter the code we sent to your email along with your new password.
-                            </p>
-                        </div>
-                    </div>
+    if (success) return <div role="status">
+        <div className={styles.statusIcon}><Check aria-hidden="true" /></div>
+        <FormHeading title="Password updated">Your new password is ready. Sign in to return to your Karta workspace.</FormHeading>
+        <ButtonLink href="/auth/login" fullWidth>Sign in <ArrowRight aria-hidden="true" /></ButtonLink>
+    </div>;
 
-                    {/* Right Panel */}
-                    <div
-                        className="w-full md:w-7/12 lg:w-1/2 p-10 lg:p-20 flex flex-col justify-center"
-                        style={{ backgroundColor: "var(--bg-3)" }}
-                    >
-                        <div className="max-w-md mx-auto w-full">
-                            {!success ? (
-                                <>
-                                    <div className="mb-10 text-center md:text-left">
-                                        <h3 className="text-3xl font-bold mb-3" style={{ color: "var(--text-primary)" }}>Enter Reset Code</h3>
-                                        <p style={{ color: "var(--text-secondary)" }}>
-                                            We sent a 6-digit code to{" "}
-                                            <span className="font-semibold" style={{ color: "var(--text-primary)" }}>{email}</span>
-                                        </p>
-                                    </div>
-
-                                    <form onSubmit={handleSubmit} className="space-y-6">
-                                        {!searchParams.get("email") && (
-                                            <div>
-                                                <label className="block text-sm font-semibold mb-1.5 ml-1" style={{ color: "var(--text-secondary)" }}>Email</label>
-                                                <input
-                                                    type="email"
-                                                    className="input w-full"
-                                                    placeholder="Your email"
-                                                    value={email}
-                                                    onChange={(e) => setEmail(e.target.value)}
-                                                    required
-                                                />
-                                            </div>
-                                        )}
-
-                                        <div>
-                                            <label className="block text-sm font-semibold mb-3 ml-1" style={{ color: "var(--text-secondary)" }}>Verification Code</label>
-                                            <div className="flex justify-center gap-3" onPaste={handleOtpPaste}>
-                                                {otpDigits.map((digit, i) => (
-                                                    <input
-                                                        key={i}
-                                                        ref={(el) => { otpRefs.current[i] = el; }}
-                                                        type="text"
-                                                        inputMode="numeric"
-                                                        maxLength={1}
-                                                        value={digit}
-                                                        onChange={(e) => handleOtpChange(i, e.target.value)}
-                                                        onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                                                        className="w-14 h-16 text-center text-2xl font-bold font-mono rounded-md ring-accent transition-all"
-                                                        style={{
-                                                            backgroundColor: "var(--input-bg)",
-                                                            border: "1px solid var(--border)",
-                                                            color: "var(--text-primary)",
-                                                        }}
-                                                    />
-                                                ))}
-                                            </div>
-                                            <div className="flex justify-center mt-4">
-                                                <div className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
-                                                    {resendCooldown > 0 ? (
-                                                        <span>
-                                                            Resend code in{" "}
-                                                            <span className="font-mono" style={{ color: "var(--text-primary)" }}>{resendCooldown}s</span>
-                                                        </span>
-                                                    ) : (
-                                                        <>
-                                                            Didn&apos;t receive the code?{" "}
-                                                            <button
-                                                                type="button"
-                                                                onClick={handleResendCode}
-                                                                className="font-semibold hover:underline transition-all underline-offset-4"
-                                                                style={{ color: "var(--text-primary)" }}
-                                                            >
-                                                                Resend
-                                                            </button>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-semibold mb-1.5 ml-1" style={{ color: "var(--text-secondary)" }}>New Password</label>
-                                            <input
-                                                type="password"
-                                                className="input w-full"
-                                                placeholder="At least 6 characters"
-                                                value={newPassword}
-                                                onChange={(e) => setNewPassword(e.target.value)}
-                                                required
-                                                minLength={6}
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-semibold mb-1.5 ml-1" style={{ color: "var(--text-secondary)" }}>Confirm Password</label>
-                                            <input
-                                                type="password"
-                                                className="input w-full"
-                                                placeholder="Re-enter your password"
-                                                value={confirmPassword}
-                                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                                required
-                                            />
-                                        </div>
-
-                                        <div className="pt-4">
-                                            <button
-                                                type="submit"
-                                                disabled={loading}
-                                                className="w-full flex justify-center py-2.5 px-4 rounded-md text-sm font-semibold text-white accent-gradient focus:outline-none transition-all disabled:opacity-50"
-                                            >
-                                                {loading ? "Resetting..." : "Reset Password"}
-                                            </button>
-                                        </div>
-                                    </form>
-                                </>
-                            ) : (
-                                <div className="text-center">
-                                    <div className="w-20 h-20 mx-auto mb-8 bg-gradient-to-br from-green-600/20 via-green-500/20 to-green-400/20 rounded-xl flex items-center justify-center border border-green-500/30">
-                                        <svg className="w-10 h-10 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                        </svg>
-                                    </div>
-                                    <h3 className="text-3xl font-bold mb-3" style={{ color: "var(--text-primary)" }}>Password Reset!</h3>
-                                    <p className="mb-8" style={{ color: "var(--text-secondary)" }}>
-                                        Your password has been changed successfully. You can now log in with your new password.
-                                    </p>
-                                    <Link
-                                        href="/auth/login"
-                                        className="inline-flex justify-center py-2.5 px-4 rounded-md text-sm font-semibold text-white accent-gradient transition-all"
-                                    >
-                                        Go to Login
-                                    </Link>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
+    return <>
+        <FormHeading title="Set a new password" eyebrow="Account recovery">Enter your email verification code and choose a new password.</FormHeading>
+        <form className={styles.form} onSubmit={handleSubmit} aria-busy={loading}>
+            <FormError message={error} />
+            {notice && <Alert>{notice}</Alert>}
+            <fieldset className={styles.fields} disabled={loading || resending}>
+                <AuthField id="reset-email" name="email" label="Email address" type="email" autoComplete="email" placeholder="you@company.com" hint="The email address that received your reset code." value={email} onChange={event => { setEmail(event.target.value); setCode(""); }} required />
+                <CodeInput value={code} onChange={setCode} />
+                <AuthField id="new-password" name="new-password" label="New password" type="password" autoComplete="new-password" placeholder="Create a new password" hint="Use at least 6 characters." minLength={6} value={password} onChange={event => { setPassword(event.target.value); setPasswordMismatch(false); }} required />
+                <AuthField id="confirm-password" name="confirm-password" label="Confirm password" type="password" autoComplete="new-password" placeholder="Repeat your new password" hint={passwordMismatch ? "Enter the same password as the field above." : "Re-enter your new password to confirm it."} aria-invalid={passwordMismatch || undefined} minLength={6} value={confirmation} onChange={event => { setConfirmation(event.target.value); setPasswordMismatch(false); }} required />
+                <PrimaryButton type="submit" loading={loading}>{loading ? "Updating password…" : "Update password"}</PrimaryButton>
+            </fieldset>
+        </form>
+        <p className={styles.resend}>Need another code? <button type="button" className={styles.textLink} onClick={resendCode} disabled={cooldown > 0 || resending || loading || !email.trim()}>{resending ? "Sending code…" : cooldown > 0 ? `Resend in ${cooldown}s` : "Resend code"}</button></p>
+        <p className={styles.switchAuth}><Link href="/auth/login" className={styles.textLink}>Back to sign in</Link></p>
+    </>;
 }
 
 export default function ResetPasswordPage() {
-    return (
-        <Suspense fallback={<div className="min-h-screen" style={{ backgroundColor: "var(--bg)" }} />}>
-            <ResetPasswordForm />
-        </Suspense>
-    );
+    return <AuthShell><Suspense fallback={<AuthLoading />}><ResetPasswordForm /></Suspense></AuthShell>;
 }

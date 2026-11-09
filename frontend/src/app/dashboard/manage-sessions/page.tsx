@@ -1,6 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { Suspense, useState, useEffect, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ASSESSMENTS_CHANGED_EVENT } from "@/hooks/useWorkspaceAssessments";
+import { LoadingState } from "@/components/ui";
 import {
     CalendarClock, Plus, Pencil, Trash2, X, Check,
     AlertTriangle, Loader2, Users, Calendar, ChevronDown,
@@ -245,6 +248,12 @@ function SessionForm({
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function ManageSessionsPage() {
+    return <Suspense fallback={<LoadingState>Loading assessments</LoadingState>}><ManageSessionsContent /></Suspense>;
+}
+
+function ManageSessionsContent() {
+    const searchParams = useSearchParams();
+    const router = useRouter();
     const [sessions, setSessions] = useState<AssessmentSession[]>([]);
     const [members, setMembers] = useState<CompanyMember[]>([]);
     const [dimensions, setDimensions] = useState<Dimension[]>([]);
@@ -287,6 +296,14 @@ export default function ManageSessionsPage() {
         setFStart(""); setFEnd(""); setFMembers([]); setFDimensions([]); setFError("");
     };
 
+    useEffect(() => {
+        if (searchParams.get("create") === "true") {
+            resetForm();
+            setShowCreate(true);
+            router.replace("/dashboard/manage-sessions", { scroll: false });
+        }
+    }, [searchParams, router]);
+
     const openCreate = () => { resetForm(); setShowCreate(true); };
     const openEdit = (s: AssessmentSession) => {
         setFTitle(s.title); setFDesc(s.description); setFStatus(s.status);
@@ -312,6 +329,7 @@ export default function ManageSessionsPage() {
         try {
             setSaving(true);
             await api.post("/sessions/company", payload());
+            window.dispatchEvent(new Event(ASSESSMENTS_CHANGED_EVENT));
             toast.success("Session created!");
             setShowCreate(false);
             fetchAll();
@@ -325,6 +343,7 @@ export default function ManageSessionsPage() {
         try {
             setSaving(true);
             await api.put(`/sessions/company/${editTarget._id}`, payload());
+            window.dispatchEvent(new Event(ASSESSMENTS_CHANGED_EVENT));
             toast.success("Session updated!");
             setEditTarget(null);
             fetchAll();
@@ -338,6 +357,7 @@ export default function ManageSessionsPage() {
         try {
             setDeleting(true);
             await api.delete(`/sessions/company/${deleteTarget._id}`);
+            window.dispatchEvent(new Event(ASSESSMENTS_CHANGED_EVENT));
             toast.success("Session deleted");
             setDeleteTarget(null);
             fetchAll();

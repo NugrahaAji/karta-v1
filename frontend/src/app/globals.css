@@ -1,60 +1,48 @@
+@import "../components/ui/tokens.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Design Tokens ─────────────────────────────────────────────────────────── */
+/* Design system foundations: palette and spacing from the supplied style guide. */
 :root {
-  /* Dark mode (default) */
-  --bg:            #070707;
-  --bg-2:          #0c0c0c;
-  --bg-3:          #0f0f0f;
-  --bg-4:          #111111;
-  --bg-hover:      #121212;
-
-  --border:        #303030;
-  --border-2:      #1e1e1e;
-  --border-3:      #2a2a2a;
-
-  --text-primary:  #ededed;
-  --text-secondary:#8b8b8b;
-  --text-muted:    #555555;
-  --text-faint:    #333333;
-
-  --sidebar-bg:    #050505;
-  --input-bg:      #0f0f0f;
-
-  /* ─── Accent — edit ONLY these three to retheme the entire app ─────────── */
-  --accent-from:   #007bff;
-  --accent-via:    #007bff90;
-  --accent-to:     #007bff;
-
-  /* Derived accent tokens (auto-computed, do NOT edit manually) */
-  --accent-gradient:    linear-gradient(to right, var(--accent-from), var(--accent-via), var(--accent-to));
-  --accent-color:       var(--accent-from);
-  --accent-color-2:     var(--accent-via);
-  --accent-muted:       color-mix(in srgb, var(--accent-from) 12%, transparent);
-  --accent-muted-border:color-mix(in srgb, var(--accent-from) 25%, transparent);
+  --neutral-white: #ffffff; --neutral-95: #f2f2f2; --neutral-70: #a3a3a3;
+  --neutral-40: #666666; --neutral-10: #242424; --neutral-black: #000000;
+  --blue-20: #181f6d; --blue-50: #3545ee; --blue-60: #1b2bd3;
+  --coral: #ff7972; --lavender: #f0f2ff;
+  --space-4: .25rem; --space-8: .5rem; --space-12: .75rem; --space-16: 1rem;
+  --space-24: 1.5rem; --space-32: 2rem; --space-40: 2.5rem; --space-48: 3rem;
+  --space-64: 4rem; --space-72: 4.5rem; --space-80: 5rem; --space-96: 6rem; --space-160: 10rem;
+  --public-navbar-height: var(--space-80);
+  --grid-columns: 12; --grid-gutter: 1.5rem; --grid-margin: 10rem;
+  --radius: .625rem;
+  --accent-from: var(--blue-50); --accent-via: var(--blue-50); --accent-to: var(--blue-50);
+  --accent-gradient: linear-gradient(90deg, var(--accent-from), var(--accent-to));
+  --accent-color: var(--blue-50); --accent-color-2: var(--blue-50);
+  --accent-muted: rgb(53 69 238 / 12%); --accent-muted-border: rgb(53 69 238 / 24%);
+  --landing-surface-secondary: var(--neutral-95);
+  --landing-action: var(--ui-action);
+  --landing-on-action: var(--ui-on-action);
+  --landing-action-text: var(--ui-action-text);
+  --landing-action-hover: var(--ui-action-hover);
+  --landing-action-pressed: var(--ui-action-pressed);
+  --landing-focus: var(--ui-focus);
+  --bg: #ffffff; --bg-2: #ffffff; --bg-3: #f0f2ff; --bg-4: #e5e8f8; --bg-hover: #e9ebfa;
+  --border: #dedee5; --border-2: #e9e9ef; --border-3: #c6c9e2;
+  --text-primary: #242424; --text-secondary: #666666; --text-muted: #737373; --text-faint: #a3a3a3;
+  --sidebar-bg: #f8f9ff; --input-bg: #f2f2f2;
 }
 
-/* Light mode overrides — high contrast */
-html.light {
-  --bg:            #f4f4f5;
-  --bg-2:          #ffffff;
-  --bg-3:          #f1f1f1;
-  --bg-4:          #e8e8e8;
-  --bg-hover:      #f0f0f0;
+@media (max-width: 1023px) {
+  :root { --public-navbar-height: var(--space-64); }
+}
 
-  --border:        #d1d1d1;
-  --border-2:      #e4e4e4;
-  --border-3:      #c4c4c4;
-
-  --text-primary:  #0f0f0f;
-  --text-secondary:#3a3a3a;
-  --text-muted:    #606060;
-  --text-faint:    #a0a0a0;
-
-  --sidebar-bg:    #fafafa;
-  --input-bg:      #ffffff;
+html.dark {
+  --landing-surface-secondary: var(--bg-3);
+  --bg: #10112a; --bg-2: #191a34; --bg-3: #22243f; --bg-4: #2c2e4c; --bg-hover: #303252;
+  --border: #41435e; --border-2: #30324d; --border-3: #555776;
+  --text-primary: #ffffff; --text-secondary: #c3c5d5; --text-muted: #a3a3b5; --text-faint: #777991;
+  --sidebar-bg: #0d0e23; --input-bg: #22243f;
 }
 
 /* ─── Base ───────────────────────────────────────────────────────────────────── */
@@ -96,77 +84,11 @@ html.light {
     background-color: color-mix(in srgb, var(--accent-from) 30%, transparent);
     color: var(--text-primary);
   }
-  .theme {
-    --font-heading:            var(--font-sans);
-    --font-sans:            var(--font-sans);
-  }
-  :root {
-    --background:            oklch(1 0 0);
-    --foreground:            oklch(0.145 0 0);
-    --card:            oklch(1 0 0);
-    --card-foreground:            oklch(0.145 0 0);
-    --popover:            oklch(1 0 0);
-    --popover-foreground:            oklch(0.145 0 0);
-    --primary:            oklch(0.205 0 0);
-    --primary-foreground:            oklch(0.985 0 0);
-    --secondary:            oklch(0.97 0 0);
-    --secondary-foreground:            oklch(0.205 0 0);
-    --muted:            oklch(0.97 0 0);
-    --muted-foreground:            oklch(0.556 0 0);
-    --accent:            oklch(0.97 0 0);
-    --accent-foreground:            oklch(0.205 0 0);
-    --destructive:            oklch(0.577 0.245 27.325);
-    --border:            oklch(0.922 0 0);
-    --input:            oklch(0.922 0 0);
-    --ring:            oklch(0.708 0 0);
-    --chart-1:            oklch(0.87 0 0);
-    --chart-2:            oklch(0.556 0 0);
-    --chart-3:            oklch(0.439 0 0);
-    --chart-4:            oklch(0.371 0 0);
-    --chart-5:            oklch(0.269 0 0);
-    --radius:            0.625rem;
-    --sidebar:            oklch(0.985 0 0);
-    --sidebar-foreground:            oklch(0.145 0 0);
-    --sidebar-primary:            oklch(0.205 0 0);
-    --sidebar-primary-foreground:            oklch(0.985 0 0);
-    --sidebar-accent:            oklch(0.97 0 0);
-    --sidebar-accent-foreground:            oklch(0.205 0 0);
-    --sidebar-border:            oklch(0.922 0 0);
-    --sidebar-ring:            oklch(0.708 0 0);
-  }
-  .dark {
-    --background:            oklch(0.145 0 0);
-    --foreground:            oklch(0.985 0 0);
-    --card:            oklch(0.205 0 0);
-    --card-foreground:            oklch(0.985 0 0);
-    --popover:            oklch(0.205 0 0);
-    --popover-foreground:            oklch(0.985 0 0);
-    --primary:            oklch(0.922 0 0);
-    --primary-foreground:            oklch(0.205 0 0);
-    --secondary:            oklch(0.269 0 0);
-    --secondary-foreground:            oklch(0.985 0 0);
-    --muted:            oklch(0.269 0 0);
-    --muted-foreground:            oklch(0.708 0 0);
-    --accent:            oklch(0.269 0 0);
-    --accent-foreground:            oklch(0.985 0 0);
-    --destructive:            oklch(0.704 0.191 22.216);
-    --border:            oklch(1 0 0 / 10%);
-    --input:            oklch(1 0 0 / 15%);
-    --ring:            oklch(0.556 0 0);
-    --chart-1:            oklch(0.87 0 0);
-    --chart-2:            oklch(0.556 0 0);
-    --chart-3:            oklch(0.439 0 0);
-    --chart-4:            oklch(0.371 0 0);
-    --chart-5:            oklch(0.269 0 0);
-    --sidebar:            oklch(0.205 0 0);
-    --sidebar-foreground:            oklch(0.985 0 0);
-    --sidebar-primary:            oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground:            oklch(0.985 0 0);
-    --sidebar-accent:            oklch(0.269 0 0);
-    --sidebar-accent-foreground:            oklch(0.985 0 0);
-    --sidebar-border:            oklch(1 0 0 / 10%);
-    --sidebar-ring:            oklch(0.556 0 0);
-  }
+  h1 { font-size: 3rem; line-height: 4rem; font-weight: 500; }
+  h2 { font-size: 2rem; line-height: 2.5rem; font-weight: 500; }
+  h3 { font-size: 1.5rem; line-height: 2rem; font-weight: 500; }
+  :focus-visible { outline: 2px solid var(--blue-50); outline-offset: 2px; }
+
 }
 
 /* ─── Component Classes ──────────────────────────────────────────────────────── */
@@ -175,7 +97,7 @@ html.light {
   /* ── Primary Button — always uses accent gradient ───────────────────────── */
   .btn-primary {
     @apply inline-flex justify-center items-center gap-2 px-4 py-2
-           text-white rounded-md font-bold text-sm
+           text-white rounded-md font-normal text-sm uppercase tracking-[0.04em]
            hover:opacity-90 transition-all
            disabled:opacity-50 disabled:cursor-not-allowed;
     background: var(--accent-gradient);
@@ -204,7 +126,7 @@ html.light {
   }
   .input:focus {
     border-color: var(--accent-color);
-    box-shadow: 0 0 0 1px var(--accent-color);
+    box-shadow: 0 0 0 4px rgb(53 69 238 / 16%);
   }
   .input::placeholder {
     color: var(--text-muted);
@@ -222,6 +144,10 @@ html.light {
     background-color: var(--bg);
     color: var(--text-primary);
     min-height: 100vh;
+  }
+
+  .public-page-height {
+    min-height: calc(100dvh - var(--public-navbar-height));
   }
 
   /* ── Sidebar ────────────────────────────────────────────────────────────── */
@@ -380,7 +306,7 @@ html.light {
   .ring-accent:focus {
     outline: none;
     border-color: var(--accent-color);
-    box-shadow: 0 0 0 1px var(--accent-color);
+    box-shadow: 0 0 0 4px rgb(53 69 238 / 16%);
   }
 
   /* Muted accent chip/badge background */
@@ -419,4 +345,15 @@ html.light {
     border-color: var(--accent-color);
     color: var(--accent-color);
   }
+}
+/* Reference typography and layout utilities */
+@layer components {
+  .ds-subtitle-1 { font-size: 1rem; line-height: 1.5rem; font-weight: 600; }
+  .ds-subtitle-2 { font-size: .875rem; line-height: 1.5rem; font-weight: 600; }
+  .ds-body-1 { font-size: 1rem; line-height: 1.5rem; font-weight: 400; }
+  .ds-body-2 { font-size: .875rem; line-height: 1.5rem; font-weight: 400; }
+  .ds-caption { font-size: .75rem; line-height: 1rem; font-weight: 400; }
+  .ds-link { font-size: .875rem; line-height: 1.5rem; font-weight: 600; text-decoration: underline; }
+  .ds-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--grid-gutter); }
+  .ds-container { width: min(100% - 3rem, 100rem); margin-inline: auto; }
 }

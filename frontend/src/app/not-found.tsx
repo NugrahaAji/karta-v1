@@ -15,7 +15,7 @@ export default function NotFound() {
 
     return (
         <div
-            className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden font-sans"
+            className="public-page-height relative flex flex-col items-center justify-center overflow-hidden font-sans"
             style={{ backgroundColor: "var(--bg)", color: "var(--text-primary)" }}
         >
             {/* Animated grid background */}

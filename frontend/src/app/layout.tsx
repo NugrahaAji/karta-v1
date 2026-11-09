@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
-import { Manrope, JetBrains_Mono, Geist } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { Navbar } from "@/components/Navbar";
 import LenisProvider from "@/components/LenisProvider";
-import { AnnouncementModal } from "@/components/AnnouncementModal";
+import { BetaAnnouncement } from "@/components/BetaAnnouncement";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
-const manrope = Manrope({ subsets: ["latin"], variable: "--font-manrope" });
+
 const jetbrains = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains-mono" });
 
 export const metadata: Metadata = {
@@ -25,13 +25,13 @@ export default function RootLayout({
     children: React.ReactNode;
 }) {
     return (
-        <html lang="en" className={cn(manrope.variable, jetbrains.variable, "font-sans", geist.variable)}>
+        <html lang="en" className={cn(inter.variable, jetbrains.variable, "font-sans")}>
             <body className="antialiased" style={{ backgroundColor: "var(--bg)", color: "var(--text-primary)" }}>
                 <ThemeProvider>
                     <AuthProvider>
                         <LenisProvider>
                             <Navbar />
-                            <AnnouncementModal />
+                            <BetaAnnouncement />
                             {children}
                             <Toaster
                                 position="top-right"

@@ -4,6 +4,8 @@ import { useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 import { useAuth } from "@/hooks/useAuth";
+import { AuthShell } from "@/components/auth/AuthShell";
+import { AuthLoading } from "@/components/auth/AuthControls";
 
 function CallbackInner() {
     const searchParams = useSearchParams();
@@ -41,24 +43,13 @@ function CallbackInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchParams]);
 
-    return (
-        <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--bg)" }}>
-            <div className="text-center">
-                <div className="w-12 h-12 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
-                <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>Signing you in...</p>
-            </div>
-        </div>
-    );
+    return <AuthLoading message="Signing you in…" />;
 }
 
 export default function AuthCallbackPage() {
     return (
-        <Suspense fallback={
-            <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--bg)" }}>
-                <div className="w-12 h-12 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-        }>
+        <AuthShell><Suspense fallback={<AuthLoading message="Signing you in…" />}>
             <CallbackInner />
-        </Suspense>
+        </Suspense></AuthShell>
     );
 }

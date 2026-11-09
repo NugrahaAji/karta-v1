@@ -31,3 +31,6 @@ Thumbs.db
 
 # Uploads (local dev)
 backend/uploads/
+
+DESIGN.md
+designSystem/

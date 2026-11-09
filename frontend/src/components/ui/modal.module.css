@@ -1,0 +1,26 @@
+.backdrop, .viewport { position: fixed; inset: 0; z-index: var(--ui-layer-modal); }
+.backdrop { background: var(--ui-backdrop); }
+.viewport { display: grid; place-items: center; padding: var(--space-24); pointer-events: none; }
+.popup { display: flex; flex-direction: column; width: min(100%, 52rem); max-height: calc(100dvh - var(--space-48)); min-height: 0; overflow: hidden; pointer-events: auto; background: var(--ui-paper); color: var(--ui-ink); border: 1px solid var(--ui-outline); border-radius: var(--ui-radius-panel); font-size: var(--ui-font-small); line-height: var(--space-24); font-variant-numeric: tabular-nums; color-scheme: light; }
+:global(html.dark) .popup { color-scheme: dark; }
+.header { display: flex; align-items: flex-start; gap: var(--space-16); flex-shrink: 0; margin: var(--space-8) var(--space-8) 0; padding: var(--space-24); background: var(--ui-panel); border-radius: var(--ui-radius-card); }
+.icon { display: grid; place-items: center; flex-shrink: 0; width: var(--space-48); height: var(--space-48); border-radius: var(--ui-radius-control); color: var(--ui-action-text); background: var(--ui-selected); }
+.icon svg { width: var(--ui-icon-size); height: var(--ui-icon-size); stroke-width: var(--ui-icon-stroke); }
+.heading { flex: 1; min-width: 0; }
+.title { font-size: var(--ui-font-subheading); line-height: var(--space-32); font-weight: 500; text-wrap: balance; }
+.title:focus { outline: none; }
+.description { margin-top: var(--space-8); color: var(--ui-copy); text-wrap: pretty; }
+.close { margin: calc(-1 * var(--space-8)) calc(-1 * var(--space-8)) 0 0; }
+@media (max-width: 639px) {
+    .viewport { padding: var(--space-8); }
+    .popup { max-height: calc(100dvh - var(--space-16)); }
+    .header { padding: var(--space-16); gap: var(--space-8); }
+    .icon { display: none; }
+    .title { font-size: var(--ui-font-body); line-height: var(--space-24); font-weight: 600; }
+    .description { font-size: var(--ui-font-caption); line-height: var(--space-16); }
+}
+@media (prefers-reduced-motion: no-preference) {
+    .backdrop, .popup { transition: opacity var(--ui-duration), transform var(--ui-duration); }
+    .backdrop:is([data-starting-style], [data-ending-style]) { opacity: 0; }
+    .popup:is([data-starting-style], [data-ending-style]) { opacity: 0; transform: translateY(var(--space-8)); }
+}

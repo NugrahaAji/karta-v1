@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import Logo from "@/components/Logo";
 
 const METHOD_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   GET: { bg: "rgba(34,197,94,0.12)", text: "#22c55e", border: "rgba(34,197,94,0.25)" },
@@ -98,7 +99,8 @@ export default function ApiDocsPage() {
         <div style={styles.headerInner}>
           <div>
             <h1 style={styles.title}>
-              <span style={styles.logo}>Karta</span> API Documentation
+              <Logo style={{ marginInlineEnd: "var(--space-8)", verticalAlign: "middle" }} />
+              Karta API Documentation
             </h1>
             <p style={styles.subtitle}>v{docs?.version} · Base URL: <code style={styles.code}>{docs?.baseUrl}</code></p>
           </div>
@@ -217,7 +219,6 @@ const styles: Record<string, React.CSSProperties> = {
   header: { borderBottom: "1px solid rgba(255,255,255,0.06)", backdropFilter: "blur(12px)", background: "rgba(7,7,7,0.8)", position: "sticky" as const, top: 0, zIndex: 50 },
   headerInner: { maxWidth: 1400, margin: "0 auto", padding: "20px 32px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" as const, gap: 16 },
   title: { fontSize: 24, fontWeight: 800, margin: 0, color: "#fff" },
-  logo: { background: "var(--accent-gradient)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" },
   subtitle: { fontSize: 14, color: "#8b8b8b", margin: "4px 0 0" },
   code: { background: "rgba(255,255,255,0.06)", padding: "2px 8px", borderRadius: 6, fontSize: 13, color: "#a855f7" },
   searchWrap: {},

@@ -3,6 +3,7 @@
 import { Sun, Moon } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { useCallback } from "react";
+import { IconButton } from "@/components/ui/Button";
 
 interface ThemeToggleProps {
     variant?: "icon" | "full";   // icon = just icon button, full = icon + label
@@ -58,30 +59,17 @@ export function ThemeToggle({ variant = "icon", className = "" }: ThemeTogglePro
         );
     }
 
-    // Icon-only variant (for navbar)
+    const actionLabel = isDark ? "Switch to light mode" : "Switch to dark mode";
+
     return (
-        <button
+        <IconButton
+            type="button"
             onClick={handleToggle}
-            aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-            className={`relative p-2 rounded-lg transition-all group ${className}`}
-            style={{
-                border: "1px solid var(--border)",
-                backgroundColor: "var(--bg-2)",
-                color: "var(--text-secondary)",
-            }}
-            title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            aria-label={actionLabel}
+            title={actionLabel}
+            className={className}
         >
-            {/* Animated icon swap */}
-            <div className="relative w-4 h-4">
-                <Sun
-                    className={`absolute inset-0 w-4 h-4 text-amber-400 transition-all duration-200 ${isDark ? "opacity-0 scale-75 rotate-90" : "opacity-100 scale-100 rotate-0"
-                        }`}
-                />
-                <Moon
-                    className={`absolute inset-0 w-4 h-4 text-indigo-400 transition-all duration-200 ${isDark ? "opacity-100 scale-100 rotate-0" : "opacity-0 scale-75 -rotate-90"
-                        }`}
-                />
-            </div>
-        </button>
+            {isDark ? <Sun size={20} strokeWidth={1.75} aria-hidden="true" /> : <Moon size={20} strokeWidth={1.75} aria-hidden="true" />}
+        </IconButton>
     );
 }

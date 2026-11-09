@@ -1,130 +1,170 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Dialog } from "@base-ui/react/dialog";
+import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import Logo from "@/components/Logo";
+import { useEffect, useRef, useState } from "react";
+import { BrandLink } from "@/components/ui/BrandLink";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { ChevronsUpDown } from "lucide-react";
+import styles from "./Navbar.module.css";
 
-export function Navbar() {
-    const [scrolled, setScrolled] = useState(false);
-    const pathname = usePathname();
-    const isLandingPage = pathname === "/";
-    const isDocsPage = pathname === "/docs";
+const navigationLinks = [
+    { href: "/#platform", label: "Platform" },
+    { href: "/hp3m", label: "HP3M" },
+    { href: "/docs", label: "Docs" },
+];
+
+function NavigationLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+    return (
+        <ul className={styles.links} role="list">
+            {navigationLinks.map(({ href, label }) => {
+                const current = pathname === href ? "page" : pathname.startsWith(`${href}/`) ? "location" : undefined;
+                return (
+                    <li key={href}>
+                        <Link href={href} className={styles.link} aria-current={current} onNavigate={onNavigate}>
+                            {label}
+                        </Link>
+                    </li>
+                );
+            })}
+        </ul>
+    );
+}
+
+type NavigationMode = "flow" | "ready" | "visible" | "hidden";
+
+function useScrollVisibility() {
+    const [mode, setMode] = useState<NavigationMode>("flow");
+    const slotRef = useRef<HTMLDivElement>(null);
+    const headerRef = useRef<HTMLElement>(null);
 
     useEffect(() => {
-        const handleScroll = () => {
-            setScrolled(window.scrollY > 20);
+        const slot = slotRef.current;
+        const header = headerRef.current;
+        if (!slot || !header) return;
+
+        const threshold = 12;
+        const root = document.documentElement;
+        const getScrollTop = () => Math.max(0, Math.min(window.scrollY, root.scrollHeight - root.clientHeight));
+        let previousTop = getScrollTop();
+        let directionStart = previousTop;
+        let direction = 0;
+        let frame = 0;
+        let headerHeight = header.offsetHeight;
+        let currentMode: NavigationMode = "flow";
+
+        function update() {
+            frame = 0;
+            const top = getScrollTop();
+            const movement = Math.sign(top - previousTop);
+            if (movement && movement !== direction) {
+                direction = movement;
+                directionStart = previousTop;
+            }
+            previousTop = top;
+
+            let nextMode = currentMode;
+            if (top === 0) {
+                nextMode = "flow";
+            } else if (currentMode === "flow") {
+                // Switch to an off-screen overlay only after the header has
+                // scrolled out naturally. The ready state skips the exit animation.
+                if (top >= headerHeight) nextMode = "ready";
+            } else if (Math.abs(top - directionStart) >= threshold) {
+                if (direction < 0) nextMode = "visible";
+                else if (direction > 0 && currentMode === "visible") nextMode = "hidden";
+            }
+
+            if (nextMode !== currentMode) {
+                currentMode = nextMode;
+                setMode(nextMode);
+            }
+        }
+
+        function onScroll() {
+            if (!frame) frame = window.requestAnimationFrame(update);
+        }
+
+        const measureHeader = () => {
+            headerHeight = header.offsetHeight;
+            // Keep the document height stable when the header becomes fixed,
+            // including after a breakpoint or text-size change.
+            slot.style.setProperty("--navbar-slot-height", `${headerHeight}px`);
+            onScroll();
         };
-        window.addEventListener("scroll", handleScroll, { passive: true });
-        handleScroll();
-        return () => window.removeEventListener("scroll", handleScroll);
+
+        const resizeObserver = new ResizeObserver(measureHeader);
+        resizeObserver.observe(header);
+        measureHeader();
+        window.addEventListener("scroll", onScroll, { passive: true });
+        return () => {
+            resizeObserver.disconnect();
+            window.removeEventListener("scroll", onScroll);
+            window.cancelAnimationFrame(frame);
+        };
     }, []);
 
-    // Hidden on dashboard (dashboard has its own sidebar)
-    if (pathname?.startsWith("/dashboard")) {
-        return null;
-    }
+    return { mode, slotRef, headerRef };
+}
 
-    // On the docs page the navbar is always a static full-width bar — no float/shrink
-    const effectiveScrolled = isDocsPage ? false : scrolled;
+function PublicNavigation({ pathname }: { pathname: string }) {
+    const { mode, slotRef, headerRef } = useScrollVisibility();
+    const [open, setOpen] = useState(false);
+    const signInCurrent = pathname === "/auth/login" ? "page" : undefined;
+
+    useEffect(() => {
+        const mobile = window.matchMedia("(max-width: 1023px)");
+        const closeOnDesktop = (event: MediaQueryListEvent) => {
+            if (!event.matches) setOpen(false);
+        };
+        mobile.addEventListener("change", closeOnDesktop);
+        return () => mobile.removeEventListener("change", closeOnDesktop);
+    }, []);
 
     return (
-        <div
-            className="fixed top-0 left-0 right-0 z-50 flex justify-center transition-all duration-500 ease-out"
-            style={{ padding: effectiveScrolled ? "12px 24px 0" : "0" }}
-        >
-            <div
-                className="w-full transition-all duration-500 ease-out"
-                style={{
-                    maxWidth: effectiveScrolled ? "1280px" : "100%",
-                    borderRadius: effectiveScrolled ? "14px" : "0",
-                    background: effectiveScrolled
-                        ? "color-mix(in srgb, var(--bg-2) 85%, transparent)"
-                        : isDocsPage
-                            ? "color-mix(in srgb, var(--bg) 95%, transparent)"
-                            : "transparent",
-                    borderTop:    effectiveScrolled ? "1px solid var(--border)" : "1px solid transparent",
-                    borderLeft:   effectiveScrolled ? "1px solid var(--border)" : "1px solid transparent",
-                    borderRight:  effectiveScrolled ? "1px solid var(--border)" : "1px solid transparent",
-                    borderBottom: effectiveScrolled
-                        ? "1px solid var(--border)"
-                        : isLandingPage
-                            ? "1px solid transparent"
-                            : "1px solid var(--border)",
-                    backdropFilter: effectiveScrolled || isDocsPage ? "blur(12px)" : "blur(0px)",
-                    WebkitBackdropFilter: effectiveScrolled || isDocsPage ? "blur(12px)" : "blur(0px)",
-                }}
-            >
-                <nav className="max-w-7xl mx-auto px-5 sm:px-6">
-                    <div
-                        className="flex justify-between items-center transition-all duration-500 ease-out"
-                        style={{ height: effectiveScrolled ? "52px" : "64px" }}
-                    >
-                        {/* Left: Logo + Links */}
-                        <div className="flex items-center gap-10">
-                            <Link href="/" className="flex items-center gap-2">
-                                <Logo className="w-4 h-4" style={{ color: "var(--text-primary)" }} />
-                                <span
-                                    className="text-xl font-bold tracking-tight"
-                                    style={{ color: "var(--text-primary)" }}
-                                >
-                                    Karta
-                                </span>
-                            </Link>
-
-                            <div className="hidden md:flex items-center space-x-8">
-                                <button
-                                    className="flex items-center gap-1.5 text-sm font-semibold px-2 py-1.5 rounded-md transition-all"
-                                    style={{ color: "var(--text-primary)" }}
-                                >
-                                    Products <ChevronsUpDown className="w-3.5 h-3.5" style={{ color: "var(--text-secondary)" }} />
-                                </button>
-                                <Link
-                                    href="/docs"
-                                    className="text-sm font-semibold px-2 py-1.5 transition-all rounded-md"
-                                    style={{ color: "var(--text-primary)" }}
-                                >
-                                    Docs
-                                </Link>
-                                <Link
-                                    href="/pricing"
-                                    className="text-sm font-semibold px-2 py-1.5 transition-all rounded-md"
-                                    style={{ color: "var(--text-primary)" }}
-                                    disabled={true}
-                                >
-                                    Pricing
-                                </Link>
-                            </div>
-                        </div>
-
-                        {/* Right: Theme toggle + Auth */}
-                        <div className="flex items-center gap-3">
-                            {/* Theme toggle icon button */}
+        <Dialog.Root open={open} onOpenChange={setOpen}>
+            <div ref={slotRef} className={styles.headerSlot}>
+                <header ref={headerRef} className={styles.header} data-mode={open && mode !== "flow" ? "visible" : mode}>
+                    <nav className={styles.navigation} aria-label="Main navigation">
+                        <BrandLink aria-current={pathname === "/" ? "page" : undefined} />
+                        <div className={styles.desktopLinks}><NavigationLinks pathname={pathname} /></div>
+                        <div className={styles.actions}>
+                            <Link href="/auth/login" className={`${styles.link} ${styles.desktopSignIn}`} aria-current={signInCurrent}>Sign in</Link>
                             <ThemeToggle variant="icon" />
-
-                            <Link
-                                href="/auth/login"
-                                className="text-sm font-semibold px-3 py-1.5 rounded-md transition-all"
-                                style={{
-                                    color: "var(--text-primary)",
-                                    border: "1px solid transparent",
-                                }}
-                            >
-                                Sign In
-                            </Link>
-                            <Link
-                                href="/auth/register"
-                                className="text-sm font-bold px-4 py-1.5 rounded-md text-white hover:opacity-90 transition-all"
-                                style={{ background: "var(--accent-gradient)" }}
-                            >
-                                Start your project
-                            </Link>
+                            <Dialog.Trigger className={`${styles.iconButton} ${styles.menuToggle}`} aria-label="Open navigation menu">
+                                <Menu aria-hidden="true" />
+                            </Dialog.Trigger>
                         </div>
-                    </div>
-                </nav>
+                    </nav>
+                </header>
             </div>
-        </div>
+
+            <Dialog.Portal>
+                <Dialog.Backdrop className={styles.backdrop} />
+                <Dialog.Popup className={styles.mobileMenu} data-lenis-prevent>
+                    <div className={styles.menuHeader}>
+                        <Dialog.Title className={styles.menuTitle}>Menu</Dialog.Title>
+                        <Dialog.Close className={styles.iconButton} aria-label="Close navigation menu">
+                            <X aria-hidden="true" />
+                        </Dialog.Close>
+                    </div>
+                    <nav className={styles.mobileNavigation} aria-label="Mobile navigation">
+                        <NavigationLinks pathname={pathname} onNavigate={() => setOpen(false)} />
+                        <Link href="/auth/login" className={`${styles.link} ${styles.mobileSignIn}`} aria-current={signInCurrent} onNavigate={() => setOpen(false)}>
+                            Sign in
+                        </Link>
+                    </nav>
+                </Dialog.Popup>
+            </Dialog.Portal>
+        </Dialog.Root>
     );
+}
+
+export function Navbar() {
+    const pathname = usePathname() ?? "";
+
+    if (pathname === "/dashboard" || pathname.startsWith("/dashboard/") || pathname.startsWith("/auth/")) return null;
+
+    return <PublicNavigation key={pathname} pathname={pathname} />;
 }

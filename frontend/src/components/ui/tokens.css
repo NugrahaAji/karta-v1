@@ -1,0 +1,71 @@
+/* Shared public/auth semantics. Change themes here, never inside a page shell. */
+:root {
+    --ui-surface: var(--bg);
+    --ui-paper: #ffffff;
+    --ui-panel: #f2f3ff;
+    --ui-tile: #e7e8f5;
+    --ui-ink: #2b2850;
+    --ui-copy: var(--text-secondary);
+    --ui-placeholder: var(--text-muted);
+    --ui-outline: var(--border);
+    --ui-outline-input: var(--border-3);
+    --ui-action: var(--blue-50);
+    --ui-action-text: var(--blue-50);
+    --ui-on-action: var(--neutral-white);
+    --ui-action-hover: color-mix(in srgb, var(--ui-action), var(--blue-20) 8%);
+    --ui-action-pressed: color-mix(in srgb, var(--ui-action), var(--blue-20) 24%);
+    --ui-hover: color-mix(in srgb, var(--ui-action-text) 8%, transparent);
+    --ui-selected: color-mix(in srgb, var(--ui-action-text) 12%, transparent);
+    --ui-focus: color-mix(in srgb, var(--ui-action-text) 16%, transparent);
+    --ui-pressed: color-mix(in srgb, var(--ui-action-text) 24%, transparent);
+    --ui-feature: #2428d8;
+    --ui-feature-ink: #171b78;
+    --ui-on-feature: #ffffff;
+    --ui-on-feature-muted: #dedfff;
+    --ui-coral: #ff7b6b;
+    --ui-on-coral: var(--neutral-10);
+    --ui-error: #b42318;
+    --ui-error-surface: color-mix(in srgb, var(--ui-error) 6%, var(--ui-surface));
+    --ui-radius-control: var(--space-8);
+    --ui-radius-card: var(--space-16);
+    --ui-radius-panel: var(--space-24);
+    --ui-font-caption: .75rem;
+    --ui-font-small: .875rem;
+    --ui-font-body: 1rem;
+    --ui-font-subheading: 1.5rem;
+    --ui-font-heading: 2rem;
+    --ui-font-title: 3rem;
+    --ui-control-height: var(--space-48);
+    --ui-icon-size: var(--space-24);
+    --ui-icon-stroke: 1.75;
+    --ui-content-width: 100rem;
+    --ui-page-gutter: var(--space-48);
+    --ui-duration: 150ms;
+    --ui-backdrop: color-mix(in srgb, var(--neutral-10) 60%, transparent);
+    --ui-layer-modal: 200;
+    --ui-sidebar: #f6f6f6;
+    --ui-sidebar-search: #eaeaea;
+    --ui-sidebar-active-outline: #eeeeee;
+    --ui-sidebar-active-shadow: 0 2px 4px rgb(0 0 0 / 4%);
+}
+
+html.dark {
+    --ui-paper: #11122a;
+    --ui-panel: #191a34;
+    --ui-tile: #252743;
+    --ui-ink: #eeeefa;
+    --ui-action-text: #a6afff;
+    --ui-error: #ffb4ab;
+    --ui-sidebar: var(--sidebar-bg);
+    --ui-sidebar-search: var(--bg-3);
+    --ui-sidebar-active-outline: var(--ui-outline);
+    --ui-sidebar-active-shadow: none;
+}
+
+@media (max-width: 1023px) {
+    :root { --ui-page-gutter: var(--space-24); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root { --ui-duration: 0ms; }
+}
