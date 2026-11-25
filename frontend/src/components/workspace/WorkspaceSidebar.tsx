@@ -163,7 +163,7 @@ function SidebarContent({ user, logout, role, pathname, assessments, collapsed =
         <div className={styles.brandRow}>
             <Link href="/dashboard" className={styles.brand} onClick={onNavigate} aria-label="Karta workspace" title={collapsed ? "Karta workspace" : undefined}>
                 <Logo className={styles.brandMark} />
-                {!collapsed && <span className={styles.brandCopy}><strong>Karta</strong><span>{subtitle}</span></span>}
+                {!collapsed && <span className={styles.brandCopy}><strong>Karta</strong></span>}
             </Link>
             {!collapsed && <button type="button" className={styles.iconButton} onClick={onToggle} aria-label={mobile ? "Close navigation" : "Collapse sidebar"} title={mobile ? "Close navigation" : "Collapse sidebar"}>
                 {mobile ? <X aria-hidden="true" /> : <PanelLeftClose aria-hidden="true" />}

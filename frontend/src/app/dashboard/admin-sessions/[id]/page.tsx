@@ -20,6 +20,7 @@ import {
     ActionPlanGroup, MonitoringColumn, MonitoringCell, MonitoringRow,
 } from "@/types";
 import MonitoringTable, { monRowKey, buildMonRows } from "@/components/MonitoringTable";
+import { monitoringEntries, monitoringPayload } from "@/lib/monitoring";
 import type { AiAssessmentItem } from "@/types";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -326,6 +327,8 @@ export default function AdminSessionDetailPage() {
     type MonRowData = Omit<MonitoringRow, "_id" | "actionPlanGroupId" | "actionPlanItemIdx">;
     const [monRowData, setMonRowData] = useState<Record<string, MonRowData>>({});
     const [savingMonRows, setSavingMonRows] = useState(false);
+    const [monitoringDirty, setMonitoringDirty] = useState(false);
+    const [monitoringSaveError, setMonitoringSaveError] = useState("");
 
     // AI Reasoning state
     const [aiLoading, setAiLoading] = useState(false);
@@ -594,28 +597,14 @@ export default function AdminSessionDetailPage() {
 
     const handleSaveMonitoring = async () => {
         setSavingMonRows(true);
+        setMonitoringSaveError("");
         try {
-            // Build array from monRowData — derive grpId + itemIdx from key
-            const rows = buildMonRows(apGroups, subResults, dimensions);
-            const payload = rows.map(r => {
-                const grpId = r.grp._id ?? String(r.grpIdx);
-                const key = monRowKey(grpId, r.itemIdx);
-                const d = monRowData[key] ?? { subdimension: "", timeline: [], timelineStatuses: [], pic: "", checker: "", achievementStatus: "" as const, notes: "" };
-                return {
-                    actionPlanGroupId: r.grp._id ?? null,
-                    actionPlanItemIdx: r.itemIdx,
-                    subdimension:      d.subdimension || r.sub?.subId || null,
-                    timeline:          d.timeline,
-                    timelineStatuses:  d.timelineStatuses ?? [],
-                    pic:               d.pic,
-                    checker:           d.checker,
-                    achievementStatus: d.achievementStatus,
-                    notes:             d.notes,
-                };
-            });
+            const payload = monitoringPayload(monitoringEntries(apGroups, subResults, dimensions), monRowData);
             await api.patch(`/sessions/admin/${sessionId}/monitoring-rows`, { monitoringRows: payload });
+            setMonitoringDirty(false);
             toast.success("Monitoring saved");
         } catch {
+            setMonitoringSaveError("Monitoring could not be saved. Your edits are still here; try saving again.");
             toast.error("Failed to save monitoring");
         } finally {
             setSavingMonRows(false);
@@ -721,20 +710,22 @@ export default function AdminSessionDetailPage() {
                     subResults={subResults}
                     dimensions={dimensions}
                     monData={monRowData}
-                    onChangeRow={(key, data) => setMonRowData(prev => ({
+                    onChangeRow={(key, data) => { setMonitoringDirty(true); setMonitoringSaveError(""); setMonRowData(prev => ({
                         ...prev,
                         [key]: {
                             subdimension: "", timeline: [], timelineStatuses: [], pic: "", checker: "", achievementStatus: "", notes: "",
                             ...prev[key],
                             ...data,
                         },
-                    }))}
+                    })); }}
                     subAnalysis={subAnalysis}
                     finalResults={Object.fromEntries(subResults.map(s => {
                         const fi = s.adjustment ? s.adjustment.finalLevelIndex : s.hasMajority ? s.majorityLevelIndex : null;
                         return [s.subId, fi !== null ? fi + 1 : null];
                     }))}
                     saving={savingMonRows}
+                    dirty={monitoringDirty}
+                    saveError={monitoringSaveError}
                     onSave={handleSaveMonitoring}
                 />
             )}

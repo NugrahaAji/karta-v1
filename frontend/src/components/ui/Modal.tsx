@@ -7,7 +7,7 @@ import { IconButton } from "./Button";
 import styles from "./modal.module.css";
 
 /** Controlled dialog: the owner decides when a close request may discard work. */
-export function Modal({ open, onClose, title, description, icon, children, closeLabel = "Close dialog", closeDisabled = false, dismissOnBackdrop = true }: {
+export function Modal({ open, onClose, title, description, icon, children, closeLabel = "Close dialog", closeDisabled = false, dismissOnBackdrop = true, placement = "center" }: {
     open: boolean;
     onClose: () => void;
     title: string;
@@ -17,6 +17,7 @@ export function Modal({ open, onClose, title, description, icon, children, close
     closeLabel?: string;
     closeDisabled?: boolean;
     dismissOnBackdrop?: boolean;
+    placement?: "center" | "right";
 }) {
     const titleRef = useRef<HTMLHeadingElement>(null);
     return <Dialog.Root open={open} disablePointerDismissal={!dismissOnBackdrop} onOpenChange={(nextOpen, details) => {
@@ -28,8 +29,8 @@ export function Modal({ open, onClose, title, description, icon, children, close
     }}>
         <Dialog.Portal>
             <Dialog.Backdrop className={styles.backdrop} />
-            <Dialog.Viewport className={styles.viewport}>
-                <Dialog.Popup className={styles.popup} initialFocus={titleRef} data-lenis-prevent>
+            <Dialog.Viewport className={styles.viewport} data-placement={placement}>
+                <Dialog.Popup className={styles.popup} data-placement={placement} initialFocus={titleRef} data-lenis-prevent>
                     <header className={styles.header}>
                         {icon && <span className={styles.icon}>{icon}</span>}
                         <div className={styles.heading}>

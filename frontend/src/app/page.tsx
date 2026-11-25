@@ -51,7 +51,7 @@ export default function Home() {
     return (
         <PublicPageLayout>
             <main className={`${styles.page} ${styles.shell}`}>
-                <section className={styles.hero} aria-labelledby="landing-title">
+                <section className={styles.hero} data-hero aria-labelledby="landing-title">
                     <div className={styles.heroMeta}><span>Process mining maturity</span><span>Built around the HP3M framework</span></div>
                     <div className={styles.heroContent}>
                         <div className={styles.intro}>
@@ -64,7 +64,6 @@ export default function Home() {
                         </div>
                         <div className={styles.heroArt}>
                             <HeroVisualizer />
-                            <p className={styles.cycleCaption}>Illustrative subdimension scores · Length reflects score</p>
                         </div>
                     </div>
                 </section>

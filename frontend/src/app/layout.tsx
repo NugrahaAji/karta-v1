@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/hooks/useTheme";
 import { Navbar } from "@/components/Navbar";
 import LenisProvider from "@/components/LenisProvider";
 import { BetaAnnouncement } from "@/components/BetaAnnouncement";
+import { PreviewChromeBoundary } from "@/components/PreviewChromeBoundary";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
@@ -30,8 +31,10 @@ export default function RootLayout({
                 <ThemeProvider>
                     <AuthProvider>
                         <LenisProvider>
-                            <Navbar />
-                            <BetaAnnouncement />
+                            <PreviewChromeBoundary>
+                                <Navbar />
+                                <BetaAnnouncement />
+                            </PreviewChromeBoundary>
                             {children}
                             <Toaster
                                 position="top-right"

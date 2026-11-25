@@ -1,67 +1,12 @@
 .visualizer {
-    --hero-motion-duration: 18s;
-    --hero-motion-curve: cubic-bezier(.45, 0, .55, 1);
-    --hero-play-state: running;
-    position: relative;
     width: 118%;
     margin-inline-start: -9%;
-    color: var(--lp-coral);
+    color: var(--lp-on-blue);
 }
 
-.visualizer[data-paused="true"] { --hero-play-state: paused; }
-.artwork { display: block; width: 100%; height: auto; aspect-ratio: 520 / 450; }
-.sculpture { transform-origin: 260px 225px; }
-.fiber { transform-origin: 0 0; }
-
-.control {
-    position: absolute;
-    inset-block-end: var(--space-16);
-    inset-inline-end: var(--space-32);
-    display: grid;
-    place-items: center;
-    width: var(--space-40);
-    height: var(--space-40);
-    border-radius: 50%;
-    color: var(--lp-on-blue-muted);
-    background: transparent;
-}
-
-.control svg { width: var(--space-16); height: var(--space-16); stroke-width: 1.5; }
-.control:hover { background: color-mix(in srgb, var(--lp-on-blue) 8%, transparent); color: var(--lp-on-blue); }
-.control:active { background: color-mix(in srgb, var(--lp-on-blue) 24%, transparent); }
-.control:focus-visible { outline: 2px solid var(--lp-on-blue); outline-offset: var(--space-4); }
-
-@media (prefers-reduced-motion: no-preference) {
-    .sculpture { animation: drift var(--hero-motion-duration) var(--hero-motion-curve) infinite; }
-    .fiber { animation: scoreLength var(--branch-duration) var(--hero-motion-curve) var(--branch-delay) infinite; }
-    .extension { animation: scorePosition var(--branch-duration) var(--hero-motion-curve) var(--branch-delay) infinite; }
-    .sculpture,
-    .fiber,
-    .extension { animation-play-state: var(--hero-play-state); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .control { display: none; }
-}
-
-@keyframes drift {
-    0%, 100% { transform: translateY(0) rotate(-7deg); }
-    50% { transform: translateY(calc(-1 * var(--space-8))) rotate(7deg); }
-}
-
-/* The same curve keeps ribs, longitudinal wires, and tips joined. Only the
-   exposed branch length changes; the shared joint and tube width stay fixed. */
-@keyframes scoreLength {
-    0%, 100% { transform: scaleX(.3); }
-    50% { transform: scaleX(1); }
-}
-
-@keyframes scorePosition {
-    0%, 100% { transform: translate(calc(var(--branch-travel-x) * -.7), calc(var(--branch-travel-y) * -.7)); }
-    50% { transform: translate(0, 0); }
-}
+.artwork { display: block; width: 100%; height: auto; aspect-ratio: 520 / 450; overflow: visible; }
+.shadedSide { fill: var(--lp-on-blue-muted); }
 
 @media (max-width: 767px) {
     .visualizer { width: 100%; margin-inline-start: 0; }
-    .control { inset-block-end: var(--space-16); inset-inline-end: 0; }
 }

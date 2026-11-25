@@ -7,10 +7,12 @@
     color: var(--text-primary);
 }
 
-.main { flex: 1; min-width: 0; min-height: 0; overflow: auto; }
+.main { flex: 1; min-width: 0; min-height: 0; overflow: auto; overflow-anchor: none; overscroll-behavior: contain; scrollbar-gutter: stable; scroll-behavior: auto; }
 .loadingScreen { display: grid; place-items: center; height: 100dvh; background: var(--ui-surface); }
 
 /* Control appearance belongs to the UI kit; this module owns sidebar layout. */
+.sidebar, .mobileBar { --ui-icon-size: var(--space-16); }
+.sidebar svg:global(.lucide), .mobileBar svg:global(.lucide) { width: var(--ui-icon-size); height: var(--ui-icon-size); }
 .sidebar {
     --sidebar-width: calc(var(--space-160) + var(--space-96) + var(--space-8));
     display: flex;
@@ -38,7 +40,7 @@
 .addAssessment { margin-left: auto; }
 .count { color: var(--ui-copy); font-size: var(--ui-font-caption); }
 .assessmentList { list-style: none; padding: 0; margin: 0; }
-.assessmentInitial { display: grid; place-items: center; width: var(--space-24); height: var(--space-24); flex-shrink: 0; border-radius: var(--space-4); background: var(--ui-panel); color: var(--ui-action-text); font-size: var(--ui-font-caption); font-weight: 600; }
+
 .empty { padding: var(--space-8) var(--space-12); margin: 0; color: var(--ui-copy); font-size: var(--ui-font-caption); line-height: var(--space-24); }
 .footer { margin: 0 var(--space-12); padding: var(--space-12) 0; border-top: 1px solid var(--ui-outline); }
 .helpLink { display: flex; justify-content: space-between; align-items: center; gap: var(--space-8); padding: var(--space-4) var(--space-8); margin-bottom: var(--space-12); }
@@ -52,8 +54,7 @@
 .userCopy strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: var(--ui-font-small); line-height: var(--space-24); font-weight: 600; }
 .userCopy > span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--ui-copy); font-size: var(--ui-font-caption); line-height: var(--space-16); }
 .collapsed { width: var(--space-72); }
-.collapsed .header { flex-direction: column; gap: var(--space-12); padding: var(--space-16) var(--space-8) var(--space-8); }
-.collapsed .brand { flex: initial; }
+.collapsed .header { justify-content: center; padding-inline: var(--space-8); }
 .collapsed .searchArea { display: grid; place-items: center; padding: var(--space-12) var(--space-8); }
 .collapsed .scrollArea { padding-inline: var(--space-8); }
 .collapsed .footer { margin-inline: var(--space-8); }

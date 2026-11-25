@@ -1,0 +1,52 @@
+.page {
+    display: grid;
+    align-items: center;
+    min-height: calc(100svh - var(--public-navbar-height));
+    max-width: var(--ui-content-width);
+    margin-inline: auto;
+    padding: var(--space-48) var(--ui-page-gutter) var(--space-64);
+    color: var(--ui-ink);
+}
+
+.layout {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    align-items: center;
+    gap: var(--space-24);
+}
+
+.content { grid-column: span 5; padding-inline: var(--space-24); }
+.eyebrow { margin-bottom: var(--space-24); color: var(--ui-copy); font-size: var(--ui-font-small); line-height: var(--space-24); }
+.content h1 { max-width: 11ch; font-size: var(--ui-font-title); line-height: var(--space-64); font-weight: 500; text-wrap: balance; }
+.description { max-width: 40ch; margin-top: var(--space-24); color: var(--ui-copy); font-size: var(--ui-font-body); line-height: var(--space-24); text-wrap: pretty; }
+.actions { display: flex; flex-wrap: wrap; gap: var(--space-12); margin-top: var(--space-32); }
+.workspaceLink { max-width: 40ch; margin-top: var(--space-40); color: var(--ui-copy); font-size: var(--ui-font-small); line-height: var(--space-24); }
+.workspaceLink a { display: inline-block; }
+
+@media (prefers-reduced-motion: no-preference) {
+    .content { animation: arrive calc(var(--ui-duration) * 3) cubic-bezier(.22, 1, .36, 1) both; }
+}
+
+@keyframes arrive {
+    from { opacity: 0; transform: translateY(var(--space-16)); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 1199px) {
+    .content { padding-inline: 0; }
+}
+
+@media (max-width: 767px) {
+    .page { padding-block: var(--space-32) var(--space-48); align-items: start; }
+    .layout { grid-template-columns: minmax(0, 1fr); gap: var(--space-32); }
+    .content { grid-column: 1; }
+    .eyebrow { margin-bottom: var(--space-12); }
+    .content h1 { max-width: none; font-size: var(--ui-font-heading); line-height: var(--space-40); }
+    .description { margin-top: var(--space-16); }
+    .actions { margin-top: var(--space-24); }
+    .workspaceLink { margin-top: var(--space-24); }
+}
+
+@media (max-width: 399px) {
+    .actions { flex-direction: column; }
+}

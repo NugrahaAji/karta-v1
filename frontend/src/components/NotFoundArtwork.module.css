@@ -1,0 +1,56 @@
+.artwork {
+    --illustration-play-state: running;
+    position: relative;
+    grid-column: 6 / -1;
+    min-width: 0;
+    padding: var(--space-24) 0;
+    overflow: hidden;
+    border-radius: var(--ui-radius-panel);
+    background: var(--ui-panel);
+}
+
+.artwork[data-paused="true"] { --illustration-play-state: paused; }
+.canvas { position: relative; }
+.drawing { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; }
+.guides { stroke: var(--ui-outline); stroke-width: 1; }
+.registration { stroke: var(--ui-placeholder); }
+.numerals { stroke: var(--ui-action-text); stroke-width: 32; stroke-linejoin: round; }
+.tracer { stroke: var(--ui-coral); stroke-width: 32; stroke-dasharray: 12 88; stroke-dashoffset: 6; }
+.markPosition { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+.mark { width: 10%; aspect-ratio: 1; color: var(--ui-action-text); }
+.control { position: absolute; right: var(--space-16); bottom: var(--space-12); }
+
+@media (prefers-reduced-motion: no-preference) {
+    .firstFour { animation: floatFirst calc(var(--ui-duration) * 64) cubic-bezier(.45, 0, .55, 1) infinite; }
+    .lastFour { animation: floatLast calc(var(--ui-duration) * 64) cubic-bezier(.45, 0, .55, 1) infinite; }
+    .tracer { animation: trace calc(var(--ui-duration) * 96) linear infinite; }
+    .mark { animation: turn calc(var(--ui-duration) * 96) cubic-bezier(.45, 0, .55, 1) infinite; }
+    .firstFour, .lastFour, .tracer, .mark { animation-play-state: var(--illustration-play-state); }
+}
+
+@keyframes floatFirst {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(calc(-1 * var(--space-12))); }
+}
+
+@keyframes floatLast {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(var(--space-12)); }
+}
+
+@keyframes trace { to { stroke-dashoffset: -94; } }
+@keyframes turn {
+    0%, 100% { transform: rotate(-15deg); }
+    50% { transform: rotate(45deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .control { display: none; }
+}
+
+@media (max-width: 767px) {
+    .artwork { grid-column: 1; grid-row: 1; padding-block: 0; max-height: calc(var(--space-160) * 2); }
+    .drawing { max-height: calc(var(--space-160) * 2); }
+    .mark { width: min(10%, var(--space-48)); }
+    .control { right: var(--space-8); bottom: var(--space-8); }
+}

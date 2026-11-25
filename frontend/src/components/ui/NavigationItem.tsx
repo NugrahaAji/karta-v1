@@ -3,7 +3,7 @@ import type { ButtonHTMLAttributes, ComponentProps, ReactNode } from "react";
 import styles from "./ui.module.css";
 
 type NavigationAppearance = {
-    leadingIcon: ReactNode;
+    leadingIcon?: ReactNode;
     trailingIcon?: ReactNode;
     selected?: boolean;
     compact?: boolean;
@@ -17,7 +17,7 @@ function navigationClassName({ selected, compact, className }: Pick<NavigationAp
 
 function NavigationContent({ leadingIcon, trailingIcon, compact, children }: NavigationAppearance) {
     return <>
-        <span className={styles.navigationLeading} aria-hidden="true">{leadingIcon}</span>
+        {leadingIcon && <span className={styles.navigationLeading} aria-hidden="true">{leadingIcon}</span>}
         <span className={compact ? styles.srOnly : styles.navigationLabel}>{children}</span>
         {!compact && trailingIcon && <span className={styles.navigationTrailing} aria-hidden="true">{trailingIcon}</span>}
     </>;

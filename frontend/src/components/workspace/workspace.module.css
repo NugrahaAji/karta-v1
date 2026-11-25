@@ -51,7 +51,7 @@
 .navLink { display: flex; align-items: center; gap: var(--space-12); width: 100%; min-height: var(--space-40); padding: var(--space-8) var(--space-12); border: 1px solid transparent; border-radius: var(--ui-radius-panel); text-align: left; font-weight: 500; transition: background var(--ui-duration), color var(--ui-duration); }
 .navLink:hover { background: var(--ui-hover); }
 .navLink.active { background: var(--ui-paper); border-color: var(--ui-sidebar-active-outline); box-shadow: var(--ui-sidebar-active-shadow); }
-.navIcon { width: var(--space-16); height: var(--space-16); stroke-width: var(--ui-icon-stroke); flex-shrink: 0; color: var(--ui-copy); }
+.navIcon { width: var(--space-4); height: var(--space-4); stroke-width: var(--ui-icon-stroke); flex-shrink: 0; color: var(--ui-copy); }
 .linkLabel { min-width: 0; flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .chevron, .statusIcon { width: var(--space-16); height: var(--space-16); flex-shrink: 0; stroke-width: var(--ui-icon-stroke); color: var(--ui-copy); }
 .assessmentSection { margin-top: var(--space-24); padding-top: var(--space-12); border-top: 1px solid var(--ui-outline); }

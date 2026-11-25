@@ -9,7 +9,7 @@ export default function LenisProvider({ children }: { children: React.ReactNode 
 
   // Disable Lenis on dashboard routes — dashboard uses native element scroll
   // (overflow-y-auto on <main>). Lenis hooks into window scroll and blocks it.
-  const isDashboard = pathname?.startsWith("/dashboard");
+  const isDashboard = pathname?.startsWith("/dashboard") || pathname === "/test/dashboard";
 
   useEffect(() => {
     if (isDashboard) return;
@@ -22,14 +22,16 @@ export default function LenisProvider({ children }: { children: React.ReactNode 
       touchMultiplier: 2,
     });
 
+    let frame: number;
     function raf(time: number) {
       lenis.raf(time);
-      requestAnimationFrame(raf);
+      frame = requestAnimationFrame(raf);
     }
 
-    requestAnimationFrame(raf);
+    frame = requestAnimationFrame(raf);
 
     return () => {
+      cancelAnimationFrame(frame);
       lenis.destroy();
     };
   }, [isDashboard]);

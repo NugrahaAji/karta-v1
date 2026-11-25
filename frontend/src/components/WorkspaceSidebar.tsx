@@ -37,9 +37,9 @@ const adminNavItems = [
 ];
 const companyNavItems = [
     overview,
-    { href: "/dashboard/assessment", label: "Assessment", icon: CheckSquare },
+    { href: "/dashboard/manage-sessions", label: "Assessments", icon: ClipboardList },
     { href: "/dashboard/members", label: "Team members", icon: Users },
-    { href: "/dashboard/manage-sessions", label: "Sessions", icon: CalendarClock },
+    { href: "/dashboard/assessment", label: "Assessment criteria", icon: CheckSquare },
     settings,
 ];
 const memberNavItems = [
@@ -119,8 +119,8 @@ export default function WorkspaceSidebar({ user, onLogout }: { user: User; onLog
         const compact = collapsed && !mobile;
         return <>
             <header className={styles.header}>
-                <BrandLink href="/dashboard" subtitle={workspaceLabel} compact={compact} className={styles.brand}
-                    aria-label="Karta workspace" onNavigate={onNavigate} />
+                {!compact && <BrandLink href="/dashboard" subtitle={workspaceLabel} className={styles.brand}
+                    aria-label="Karta workspace" onNavigate={onNavigate} />}
                 <IconButton
                     aria-label={mobile ? "Close navigation" : compact ? "Expand sidebar" : "Collapse sidebar"}
                     title={mobile ? "Close navigation" : compact ? "Expand sidebar" : "Collapse sidebar"}
@@ -172,8 +172,8 @@ export default function WorkspaceSidebar({ user, onLogout }: { user: User; onLog
                                 const active = pathname === href || pathname.startsWith(`${href}/`);
                                 const StatusIcon = statusIcons[session.status] ?? Circle;
                                 return <li key={session._id}><NavigationLink href={href} onNavigate={onNavigate} prefetch={false}
-                                    compact={compact} selected={active} trailingIcon={<StatusIcon />}
-                                    leadingIcon={<span className={styles.assessmentInitial}>{session.title.trim().charAt(0).toUpperCase() || "A"}</span>}
+                                    compact={compact} selected={active} trailingIcon={!compact ? <StatusIcon /> : undefined}
+                                    leadingIcon={compact ? <StatusIcon /> : undefined}
                                     title={`${session.title} - ${session.status}`} aria-label={`${session.title}, ${session.status}`} aria-current={active ? "page" : undefined}>
                                     {session.title}
                                 </NavigationLink></li>;

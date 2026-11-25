@@ -67,6 +67,8 @@ Use layout CSS to space form fields (`--space-24` is the auth convention). Avoid
 
 ## Adoption and checks
 
+`Modal` supports `placement="center"` (default) and `placement="right"` for workspace drawers. Both use the same header, tokens, focus management, dismissal controls, and responsive viewport sizing. Drawer content owns its bounded scroller and footer; keep long-running requests outside the dialog so dismissal does not discard them.
+
 - Auth wrappers use the primitives for login, registration/verification, recovery, reset, and callback loading states.
 - Public landing/footer CTAs use `ButtonLink`; public navigation/footer and auth share `BrandLink` and the icon theme toggle.
 - When editing tokens or primitives, run the frontend TypeScript check and build. Review auth routes plus `/`, `/docs`, and `/hp3m` at mobile/tablet/desktop widths in both themes. Check keyboard focus, native validation, password visibility, selected choices, and pending/error feedback.
